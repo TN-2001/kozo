@@ -86,8 +86,9 @@ class Painter{
       text: text,
       style: TextStyle(
         foreground: Paint()
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 6
+          ..style = PaintingStyle.stroke // 輪郭（りんかく）
+          ..strokeWidth = 5 // 輪郭の太さ
+          ..strokeJoin = StrokeJoin.round // 輪郭の角を滑らかに
           ..color = Colors.white,
         fontSize: fontSize,
       ),

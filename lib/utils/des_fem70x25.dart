@@ -1,5 +1,6 @@
 import 'dart:math';
 
+// 橋の解析
 (List<double>, List<List<List<double>>>, List<List<List<double>>>) desFEM70x25(List<List<int>> zeroOneList) {
   const int npx1 = 70;
   const int npx2 = 25;

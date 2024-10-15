@@ -18,7 +18,7 @@ class _PageGridState extends State<PageGrid> {
   late Data data;
   final CanvasData canvasData = CanvasData();
   static List<String> devTypeXYList = 
-    ["X方向の正規応力","Y方向の正規応力","XY方向のせん断応力","最大主応力","最小主応力","X方向の正規ひずみ","y方向の正規ひずみ","XY方向のせん断ひずみ","なし"];
+    ["X方向応力","Y方向応力","せん断応力","最大主応力","最小主応力","X方向ひずみ","y方向ひずみ","せん断ひずみ","なし"];
   int toolNum = 0, devTypeNum = 0;
 
   @override
@@ -113,7 +113,7 @@ class _PageGridState extends State<PageGrid> {
         onTap: (position) {
           if(data.isCalculation){
             setState(() {
-              data.selectElem(canvasData.canvasPosToDataPos(position));
+              data.selectElem(canvasData.cToD(position));
               if(data.selectedNumber >= 0){
                 data.selectedNumber = data.selectedNumber;
               }
@@ -123,7 +123,7 @@ class _PageGridState extends State<PageGrid> {
         onDrag: (position) {
           if(!data.isCalculation){
             setState(() {
-              data.selectElem(canvasData.canvasPosToDataPos(position));
+              data.selectElem(canvasData.cToD(position));
               if(data.selectedNumber >= 0){
                 if(toolNum == 0 && data.elemList[data.selectedNumber].e < 1){
                   data.elemList[data.selectedNumber].e = 1;
@@ -153,45 +153,45 @@ class GridPainter extends CustomPainter {
     double nodeMinY = data.getNodeMinY();
     double nodeMaxX = data.getNodeMaxX();
     double nodeMaxY = data.getNodeMaxY();
-    canvasData.setScale(size.width, size.height, nodeMinX-5, nodeMinY-10, nodeMaxX+5, nodeMaxY+5);
+    canvasData.setScale(125, 100, size.width-125, size.height-100, nodeMinX, nodeMinY, nodeMaxX, nodeMaxY);
 
     Paint paint = Paint();
 
     // 絵
     paint.color = const Color.fromARGB(255, 0, 0, 0);
     var path = Path();
-    path.moveTo(canvasData.dataPosToCanvasPos(Offset(nodeMinX, nodeMinY)).dx, canvasData.dataPosToCanvasPos(Offset(nodeMinX, nodeMinY)).dy);
-    path.lineTo(canvasData.dataPosToCanvasPos(Offset(nodeMinX+2, nodeMinY)).dx, canvasData.dataPosToCanvasPos(Offset(nodeMinX+2, nodeMinY)).dy);
-    path.lineTo(canvasData.dataPosToCanvasPos(Offset(nodeMinX+2, nodeMinY-1)).dx, canvasData.dataPosToCanvasPos(Offset(nodeMinX+2, nodeMinY-1)).dy);
-    path.lineTo(canvasData.dataPosToCanvasPos(Offset(nodeMinX, nodeMinY-1)).dx, canvasData.dataPosToCanvasPos(Offset(nodeMinX, nodeMinY-1)).dy);
+    path.moveTo(canvasData.dToC(Offset(nodeMinX, nodeMinY)).dx, canvasData.dToC(Offset(nodeMinX, nodeMinY)).dy);
+    path.lineTo(canvasData.dToC(Offset(nodeMinX+2, nodeMinY)).dx, canvasData.dToC(Offset(nodeMinX+2, nodeMinY)).dy);
+    path.lineTo(canvasData.dToC(Offset(nodeMinX+2, nodeMinY-1)).dx, canvasData.dToC(Offset(nodeMinX+2, nodeMinY-1)).dy);
+    path.lineTo(canvasData.dToC(Offset(nodeMinX, nodeMinY-1)).dx, canvasData.dToC(Offset(nodeMinX, nodeMinY-1)).dy);
     path.close();
-    path.moveTo(canvasData.dataPosToCanvasPos(Offset(nodeMaxX-2, nodeMinY)).dx, canvasData.dataPosToCanvasPos(Offset(nodeMaxX-2, nodeMinY)).dy);
-    path.lineTo(canvasData.dataPosToCanvasPos(Offset(nodeMaxX, nodeMinY)).dx, canvasData.dataPosToCanvasPos(Offset(nodeMaxX, nodeMinY)).dy);
-    path.lineTo(canvasData.dataPosToCanvasPos(Offset(nodeMaxX, nodeMinY-1)).dx, canvasData.dataPosToCanvasPos(Offset(nodeMaxX, nodeMinY-1)).dy);
-    path.lineTo(canvasData.dataPosToCanvasPos(Offset(nodeMaxX-2, nodeMinY-1)).dx, canvasData.dataPosToCanvasPos(Offset(nodeMaxX-2, nodeMinY-1)).dy);
+    path.moveTo(canvasData.dToC(Offset(nodeMaxX-2, nodeMinY)).dx, canvasData.dToC(Offset(nodeMaxX-2, nodeMinY)).dy);
+    path.lineTo(canvasData.dToC(Offset(nodeMaxX, nodeMinY)).dx, canvasData.dToC(Offset(nodeMaxX, nodeMinY)).dy);
+    path.lineTo(canvasData.dToC(Offset(nodeMaxX, nodeMinY-1)).dx, canvasData.dToC(Offset(nodeMaxX, nodeMinY-1)).dy);
+    path.lineTo(canvasData.dToC(Offset(nodeMaxX-2, nodeMinY-1)).dx, canvasData.dToC(Offset(nodeMaxX-2, nodeMinY-1)).dy);
     path.close();
     canvas.drawPath(path, paint);
 
     paint.color = const Color.fromARGB(255, 96, 205, 255);
     path = Path();
-    path.moveTo(canvasData.dataPosToCanvasPos(Offset(nodeMinX, nodeMinY-2)).dx, canvasData.dataPosToCanvasPos(Offset(nodeMinX, nodeMinY-2)).dy);
-    path.lineTo(canvasData.dataPosToCanvasPos(Offset(nodeMaxX, nodeMinY-2)).dx, canvasData.dataPosToCanvasPos(Offset(nodeMaxX, nodeMinY-2)).dy);
-    path.lineTo(canvasData.dataPosToCanvasPos(Offset(nodeMaxX, nodeMinY-50)).dx, canvasData.dataPosToCanvasPos(Offset(nodeMaxX, nodeMinY-50)).dy);
-    path.lineTo(canvasData.dataPosToCanvasPos(Offset(nodeMinX, nodeMinY-50)).dx, canvasData.dataPosToCanvasPos(Offset(nodeMinX, nodeMinY-50)).dy);
+    path.moveTo(canvasData.dToC(Offset(nodeMinX, nodeMinY-2)).dx, canvasData.dToC(Offset(nodeMinX, nodeMinY-2)).dy);
+    path.lineTo(canvasData.dToC(Offset(nodeMaxX, nodeMinY-2)).dx, canvasData.dToC(Offset(nodeMaxX, nodeMinY-2)).dy);
+    path.lineTo(canvasData.dToC(Offset(nodeMaxX, nodeMinY-50)).dx, canvasData.dToC(Offset(nodeMaxX, nodeMinY-50)).dy);
+    path.lineTo(canvasData.dToC(Offset(nodeMinX, nodeMinY-50)).dx, canvasData.dToC(Offset(nodeMinX, nodeMinY-50)).dy);
     path.close();
     canvas.drawPath(path, paint);
 
     paint.color = const Color.fromARGB(255, 103, 103, 103);
     path = Path();
-    path.moveTo(canvasData.dataPosToCanvasPos(Offset(nodeMinX-50, nodeMinY-1)).dx, canvasData.dataPosToCanvasPos(Offset(nodeMinX-50, nodeMinY-1)).dy);
-    path.lineTo(canvasData.dataPosToCanvasPos(Offset(nodeMinX+4, nodeMinY-1)).dx, canvasData.dataPosToCanvasPos(Offset(nodeMinX+4, nodeMinY-1)).dy);
-    path.lineTo(canvasData.dataPosToCanvasPos(Offset(nodeMinX+4, nodeMinY-50)).dx, canvasData.dataPosToCanvasPos(Offset(nodeMinX+4, nodeMinY-50)).dy);
-    path.lineTo(canvasData.dataPosToCanvasPos(Offset(nodeMinX-50, nodeMinY-50)).dx, canvasData.dataPosToCanvasPos(Offset(nodeMinX-50, nodeMinY-50)).dy);
+    path.moveTo(canvasData.dToC(Offset(nodeMinX-50, nodeMinY-1)).dx, canvasData.dToC(Offset(nodeMinX-50, nodeMinY-1)).dy);
+    path.lineTo(canvasData.dToC(Offset(nodeMinX+4, nodeMinY-1)).dx, canvasData.dToC(Offset(nodeMinX+4, nodeMinY-1)).dy);
+    path.lineTo(canvasData.dToC(Offset(nodeMinX+4, nodeMinY-50)).dx, canvasData.dToC(Offset(nodeMinX+4, nodeMinY-50)).dy);
+    path.lineTo(canvasData.dToC(Offset(nodeMinX-50, nodeMinY-50)).dx, canvasData.dToC(Offset(nodeMinX-50, nodeMinY-50)).dy);
     path.close();
-    path.moveTo(canvasData.dataPosToCanvasPos(Offset(nodeMaxX-4, nodeMinY-1)).dx, canvasData.dataPosToCanvasPos(Offset(nodeMaxX-4, nodeMinY-1)).dy);
-    path.lineTo(canvasData.dataPosToCanvasPos(Offset(nodeMaxX+50, nodeMinY-1)).dx, canvasData.dataPosToCanvasPos(Offset(nodeMaxX+50, nodeMinY-1)).dy);
-    path.lineTo(canvasData.dataPosToCanvasPos(Offset(nodeMaxX+50, nodeMinY-50)).dx, canvasData.dataPosToCanvasPos(Offset(nodeMaxX+50, nodeMinY-50)).dy);
-    path.lineTo(canvasData.dataPosToCanvasPos(Offset(nodeMaxX-4, nodeMinY-50)).dx, canvasData.dataPosToCanvasPos(Offset(nodeMaxX-4, nodeMinY-50)).dy);
+    path.moveTo(canvasData.dToC(Offset(nodeMaxX-4, nodeMinY-1)).dx, canvasData.dToC(Offset(nodeMaxX-4, nodeMinY-1)).dy);
+    path.lineTo(canvasData.dToC(Offset(nodeMaxX+50, nodeMinY-1)).dx, canvasData.dToC(Offset(nodeMaxX+50, nodeMinY-1)).dy);
+    path.lineTo(canvasData.dToC(Offset(nodeMaxX+50, nodeMinY-50)).dx, canvasData.dToC(Offset(nodeMaxX+50, nodeMinY-50)).dy);
+    path.lineTo(canvasData.dToC(Offset(nodeMaxX-4, nodeMinY-50)).dx, canvasData.dToC(Offset(nodeMaxX-4, nodeMinY-50)).dy);
     path.close();
     canvas.drawPath(path, paint);
 
@@ -206,10 +206,10 @@ class GridPainter extends CustomPainter {
             final path = Path();
             for(int j = 0; j < data.elemNode; j++){
               if(j == 0){
-                Offset pos = canvasData.dataPosToCanvasPos(data.elemList[i].nodes[j]!.pos);
+                Offset pos = canvasData.dToC(data.elemList[i].nodes[j]!.pos);
                 path.moveTo(pos.dx, pos.dy);
               }else{
-                Offset pos = canvasData.dataPosToCanvasPos(data.elemList[i].nodes[j]!.pos);
+                Offset pos = canvasData.dToC(data.elemList[i].nodes[j]!.pos);
                 path.lineTo(pos.dx, pos.dy);
               }
             }
@@ -229,10 +229,10 @@ class GridPainter extends CustomPainter {
           final path = Path();
           for(int j = 0; j < data.elemNode; j++){
             if(j == 0){
-              Offset pos = canvasData.dataPosToCanvasPos(data.elemList[i].nodes[j]!.pos);
+              Offset pos = canvasData.dToC(data.elemList[i].nodes[j]!.pos);
               path.moveTo(pos.dx, pos.dy);
             }else{
-              Offset pos = canvasData.dataPosToCanvasPos(data.elemList[i].nodes[j]!.pos);
+              Offset pos = canvasData.dToC(data.elemList[i].nodes[j]!.pos);
               path.lineTo(pos.dx, pos.dy);
             }
           }
@@ -247,7 +247,7 @@ class GridPainter extends CustomPainter {
       paint.strokeWidth = 3.0;
       for(int i = 34; i < 37; i++){
         Offset pos = data.nodeList[i].pos;
-        Painter().arrow(canvasData.dataPosToCanvasPos(pos), canvasData.dataPosToCanvasPos(Offset(pos.dx, pos.dy-1.5)), paint, canvas);
+        Painter().arrow(canvasData.dToC(pos), canvasData.dToC(Offset(pos.dx, pos.dy-1.5)), paint, canvas);
       }
     }
     else{
@@ -264,10 +264,10 @@ class GridPainter extends CustomPainter {
           final path = Path();
           for(int j = 0; j < data.elemNode; j++){
             if(j == 0){
-              Offset pos = canvasData.dataPosToCanvasPos(data.elemList[i].nodes[j]!.afterPos());
+              Offset pos = canvasData.dToC(data.elemList[i].nodes[j]!.afterPos());
               path.moveTo(pos.dx, pos.dy);
             }else{
-              Offset pos = canvasData.dataPosToCanvasPos(data.elemList[i].nodes[j]!.afterPos());
+              Offset pos = canvasData.dToC(data.elemList[i].nodes[j]!.afterPos());
               path.lineTo(pos.dx, pos.dy);
             }
           }
@@ -287,10 +287,10 @@ class GridPainter extends CustomPainter {
             final path = Path();
             for(int j = 0; j < data.elemNode; j++){
               if(j == 0){
-                Offset pos = canvasData.dataPosToCanvasPos(data.elemList[i].nodes[j]!.afterPos());
+                Offset pos = canvasData.dToC(data.elemList[i].nodes[j]!.afterPos());
                 path.moveTo(pos.dx, pos.dy);
               }else{
-                Offset pos = canvasData.dataPosToCanvasPos(data.elemList[i].nodes[j]!.afterPos());
+                Offset pos = canvasData.dToC(data.elemList[i].nodes[j]!.afterPos());
                 path.lineTo(pos.dx, pos.dy);
               }
             }
@@ -306,23 +306,53 @@ class GridPainter extends CustomPainter {
       paint.strokeWidth = 3.0;
       for(int i = 34; i < 37; i++){
         Offset pos = data.nodeList[i].afterPos();
-        Painter().arrow(canvasData.dataPosToCanvasPos(pos), canvasData.dataPosToCanvasPos(Offset(pos.dx, pos.dy-1.5)), paint, canvas);
+        Painter().arrow(canvasData.dToC(pos), canvasData.dToC(Offset(pos.dx, pos.dy-1.5)), paint, canvas);
       }
 
       // 虹色
-      Painter().rainbowBand(canvas, Offset(size.width - 60, 50), Offset(size.width - 100, size.height - 50), 50);
+      Painter().rainbowBand(canvas, Offset(size.width - 80, 50), Offset(size.width - 120, size.height - 50), 50);
 
       // 最大最小
-      Painter().text(canvas, size.width, data.resultMax.toStringAsFixed(5), Offset(size.width - 55, 40), 16, Colors.black);
-      Painter().text(canvas, size.width, data.resultMin.toStringAsFixed(5), Offset(size.width - 55, size.height - 60), 16, Colors.black);
+      Painter().text(canvas, size.width, data.resultMax.toStringAsFixed(5), Offset(size.width - 75, 40), 16, Colors.black);
+      Painter().text(canvas, size.width, data.resultMin.toStringAsFixed(5), Offset(size.width - 75, size.height - 60), 16, Colors.black);
     
       // 選択
       if(data.selectedNumber >= 0){
         if(data.elemList[data.selectedNumber].e > 0){
-          Painter().text(canvas, size.width, data.resultList[data.selectedNumber].toStringAsFixed(5), canvasData.dataPosToCanvasPos(data.elemList[data.selectedNumber].nodes[0]!.afterPos()), 16, Colors.black);
+          Painter().text(canvas, size.width, data.resultList[data.selectedNumber].toStringAsFixed(5), canvasData.dToC(data.elemList[data.selectedNumber].nodes[0]!.afterPos()), 16, Colors.black);
+        }
+      }
+      paint = Paint()
+        ..color = Colors.red
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 3;
+
+      if(data.selectedNumber >= 0){
+        if(data.elemList[data.selectedNumber].e > 0){
+          final path = Path();
+          for(int j = 0; j < data.elemNode; j++){
+            if(j == 0){
+              Offset pos = canvasData.dToC(data.elemList[data.selectedNumber].nodes[j]!.afterPos());
+              path.moveTo(pos.dx, pos.dy);
+            }else{
+              Offset pos = canvasData.dToC(data.elemList[data.selectedNumber].nodes[j]!.afterPos());
+              path.lineTo(pos.dx, pos.dy);
+            }
+          }
+          path.close();
+          canvas.drawPath(path, paint);
         }
       }
     }
+
+    // 最大最小
+    int count = 0;
+    for(int i = 0; i < data.elemList.length; i++){
+      if(data.elemList[i].e > 0){
+        count ++;
+      }
+    }
+    Painter().text(canvas, size.width, "体積：$count", const Offset(10, 10), 16, Colors.black);
   }
 
   @override
