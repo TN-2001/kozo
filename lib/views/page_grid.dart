@@ -50,10 +50,10 @@ class _PageGridState extends State<PageGrid> {
   Widget build(BuildContext context) {
     return MyScaffold (
       // ヘッダーメニュー
-      header: MyHeaderMenu(
+      header: MyHeader(
         children: [
           //メニューボタン
-          MyMenuIconButton(
+          MyIconButton(
             icon: Icons.menu, 
             onPressed: (){
               scaffoldKey.currentState!.openDrawer();
@@ -61,7 +61,7 @@ class _PageGridState extends State<PageGrid> {
           ),
           if(!data.isCalculation)...{
             // ツールメニュー
-            MyMenuToggleButtons(
+            MyIconToggleButtons(
               icons: const [Icons.edit, Icons.edit_outlined], 
               value: toolNum, 
               onPressed: (value){
@@ -74,7 +74,7 @@ class _PageGridState extends State<PageGrid> {
           const Expanded(child: SizedBox()),
           if(!data.isCalculation)...{
             // 解析開始ボタン
-            MyMenuIconButton(
+            MyIconButton(
               icon: Icons.play_arrow,
               onPressed: (){
                 setState(() {
@@ -96,7 +96,7 @@ class _PageGridState extends State<PageGrid> {
               },
             ),
             // 再開ボタン
-            MyMenuIconButton(
+            MyIconButton(
               icon: Icons.restart_alt,
               onPressed: (){
                 setState(() {
@@ -206,10 +206,10 @@ class GridPainter extends CustomPainter {
             final path = Path();
             for(int j = 0; j < data.elemNode; j++){
               if(j == 0){
-                Offset pos = canvasData.dataPosToCanvasPos(data.elemList[i].nodes[j].pos);
+                Offset pos = canvasData.dataPosToCanvasPos(data.elemList[i].nodes[j]!.pos);
                 path.moveTo(pos.dx, pos.dy);
               }else{
-                Offset pos = canvasData.dataPosToCanvasPos(data.elemList[i].nodes[j].pos);
+                Offset pos = canvasData.dataPosToCanvasPos(data.elemList[i].nodes[j]!.pos);
                 path.lineTo(pos.dx, pos.dy);
               }
             }
@@ -229,10 +229,10 @@ class GridPainter extends CustomPainter {
           final path = Path();
           for(int j = 0; j < data.elemNode; j++){
             if(j == 0){
-              Offset pos = canvasData.dataPosToCanvasPos(data.elemList[i].nodes[j].pos);
+              Offset pos = canvasData.dataPosToCanvasPos(data.elemList[i].nodes[j]!.pos);
               path.moveTo(pos.dx, pos.dy);
             }else{
-              Offset pos = canvasData.dataPosToCanvasPos(data.elemList[i].nodes[j].pos);
+              Offset pos = canvasData.dataPosToCanvasPos(data.elemList[i].nodes[j]!.pos);
               path.lineTo(pos.dx, pos.dy);
             }
           }
@@ -264,10 +264,10 @@ class GridPainter extends CustomPainter {
           final path = Path();
           for(int j = 0; j < data.elemNode; j++){
             if(j == 0){
-              Offset pos = canvasData.dataPosToCanvasPos(data.elemList[i].nodes[j].afterPos);
+              Offset pos = canvasData.dataPosToCanvasPos(data.elemList[i].nodes[j]!.afterPos());
               path.moveTo(pos.dx, pos.dy);
             }else{
-              Offset pos = canvasData.dataPosToCanvasPos(data.elemList[i].nodes[j].afterPos);
+              Offset pos = canvasData.dataPosToCanvasPos(data.elemList[i].nodes[j]!.afterPos());
               path.lineTo(pos.dx, pos.dy);
             }
           }
@@ -287,10 +287,10 @@ class GridPainter extends CustomPainter {
             final path = Path();
             for(int j = 0; j < data.elemNode; j++){
               if(j == 0){
-                Offset pos = canvasData.dataPosToCanvasPos(data.elemList[i].nodes[j].afterPos);
+                Offset pos = canvasData.dataPosToCanvasPos(data.elemList[i].nodes[j]!.afterPos());
                 path.moveTo(pos.dx, pos.dy);
               }else{
-                Offset pos = canvasData.dataPosToCanvasPos(data.elemList[i].nodes[j].afterPos);
+                Offset pos = canvasData.dataPosToCanvasPos(data.elemList[i].nodes[j]!.afterPos());
                 path.lineTo(pos.dx, pos.dy);
               }
             }
@@ -305,7 +305,7 @@ class GridPainter extends CustomPainter {
       paint.style = PaintingStyle.fill;
       paint.strokeWidth = 3.0;
       for(int i = 34; i < 37; i++){
-        Offset pos = data.nodeList[i].afterPos;
+        Offset pos = data.nodeList[i].afterPos();
         Painter().arrow(canvasData.dataPosToCanvasPos(pos), canvasData.dataPosToCanvasPos(Offset(pos.dx, pos.dy-1.5)), paint, canvas);
       }
 
@@ -319,7 +319,7 @@ class GridPainter extends CustomPainter {
       // 選択
       if(data.selectedNumber >= 0){
         if(data.elemList[data.selectedNumber].e > 0){
-          Painter().text(canvas, size.width, data.resultList[data.selectedNumber].toStringAsFixed(5), canvasData.dataPosToCanvasPos(data.elemList[data.selectedNumber].nodes[0].afterPos), 16, Colors.black);
+          Painter().text(canvas, size.width, data.resultList[data.selectedNumber].toStringAsFixed(5), canvasData.dataPosToCanvasPos(data.elemList[data.selectedNumber].nodes[0]!.afterPos()), 16, Colors.black);
         }
       }
     }

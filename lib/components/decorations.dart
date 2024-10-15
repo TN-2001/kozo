@@ -1,6 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+// サイズ
+class MySize{
+  static const double headerHeight = 50;
+  static const double iconButton = 40;
+}
+
 // 色
 class MyColors{
   static const Color wiget0 = Color.fromARGB(255, 255, 255, 255);
@@ -21,15 +27,6 @@ final BoxDecoration myBoxDecoration = BoxDecoration(
   borderRadius: MyBorderRadius.circle,
   border: Border.all(
     color: MyColors.border,
-  )
-);
-
-const BoxDecoration myBoxDecorationHeader = BoxDecoration(
-  color: MyColors.wiget0,
-  border: Border(
-    bottom: BorderSide(
-      color: MyColors.border,
-    )
   )
 );
 

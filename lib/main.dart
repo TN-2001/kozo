@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:kozo/components/widgets.dart';
-import 'package:kozo/views/page_analysis/page_analysis.dart';
 import 'package:kozo/views/page_grid.dart';
-// import 'package:kozo/views/page_truss.dart';
+import 'package:kozo/views/page_truss.dart';
 
 main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -41,7 +40,9 @@ class MainView extends StatefulWidget {
 }
 
 class MainViewState extends State<MainView> {
+  // 現在のページ番号
   int pageNum = 0;
+  // Drawer表示用のキー
   final GlobalKey<ScaffoldState> scaffoldKey = GlobalKey<ScaffoldState>();
 
   @override
@@ -60,8 +61,7 @@ class MainViewState extends State<MainView> {
       body: Column(
         children: [
           if(pageNum == 1) PageGrid(scaffoldKey: scaffoldKey,)
-          // else if(pageNum == 1) PageTruss(scaffoldKey: scaffoldKey,),
-          else if(pageNum == 0) PageAnalysis(scaffoldKey: scaffoldKey,),
+          else if(pageNum == 0) PageTruss(scaffoldKey: scaffoldKey,),
         ],
       ),
     );

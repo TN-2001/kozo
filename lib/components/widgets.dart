@@ -1,293 +1,5 @@
-// ignore_for_file: file_names
-
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:kozo/components/decorations.dart';
-
-// ignore: must_be_immutable
-class MyContainer extends StatelessWidget {
-  MyContainer({
-    super.key, 
-    this.child = const SizedBox(), 
-    this.width = double.infinity, this.height = double.infinity, 
-    this.alignment = Alignment.topLeft,
-    this.margin = EdgeInsets.zero, this.padding = EdgeInsets.zero,
-    this.color = const Color.fromARGB(0, 0, 0, 0),
-    this.isTopBorder = false, this.isBotomBorder = false, this.isLeftBorder = false, this.isRightBorder = false, this.isAllBorder = false,
-    this.borderWidth = 0, this.borderColor = const Color.fromARGB(255, 200, 200, 200), this.borderRadius = BorderRadius.zero,
-  }){
-    if(isAllBorder){
-      isBotomBorder = true;
-      isLeftBorder = true;
-      isRightBorder = true;
-      isTopBorder = true;
-    }
-  }
-
-  final Widget child;
-  final double width, height;
-  final Alignment alignment;
-  final EdgeInsets margin, padding;
-  final Color color;
-  bool isTopBorder, isBotomBorder, isLeftBorder, isRightBorder, isAllBorder;
-  final double borderWidth;
-  final Color borderColor;
-  final BorderRadius borderRadius;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: width,
-      height: height,
-      alignment: alignment,
-      margin: margin,
-      padding: padding,
-      decoration: BoxDecoration(
-        color: color,
-        border: Border(
-          left: border(isLeftBorder),
-          top: border(isTopBorder),
-          right: border(isRightBorder),
-          bottom: border(isBotomBorder),
-        ),
-        borderRadius: borderRadius,
-      ),
-      child: child
-    );
-  }
-
-  BorderSide border(bool isSet){
-    if(isSet){
-      return BorderSide(
-        color: borderColor,
-        width: borderWidth,
-      );
-    }
-    else{
-      return const BorderSide(
-        color: Color.fromARGB(0, 0, 0, 0),
-        width: 0,
-      );
-    }
-  }
-}
-
-class ContentBox extends StatelessWidget {
-  const ContentBox({super.key, this.leftChild, this.children = const <Widget>[], this.rightChild, this.height, this.sideWidth});
-
-  final Widget? leftChild;
-  final List<Widget> children;
-  final Widget? rightChild;
-  final double? height;
-  final double? sideWidth;
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      height: height ?? 40,
-      child: Row(
-        children: [
-          SizedBox(
-            width: sideWidth ?? 40,
-            child: Center(
-              child: leftChild ?? const Center(),
-            ),
-          ),
-
-          const SizedBox(width: 1,),
-
-          Expanded(
-            child: Row(
-              children: [
-                for(int i = 0; i < children.length; i++)...{
-                  Expanded(
-                    child: Center(
-                      child: children[i],
-                    ),
-                  ),
-                  const SizedBox(width: 1,),
-                }
-              ],
-            ),
-          ),
-
-          SizedBox(
-            width: sideWidth ?? 40,
-            child: Center(
-              child: rightChild ?? const Center(),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// ignore: must_be_immutable
-class ContentTextField extends StatelessWidget {
-  ContentTextField({super.key, required this.text, required this.onChange});
-
-  final String text;
-  void Function(String value) onChange;
-
-  @override
-  Widget build(BuildContext context) {
-    return TextField(
-      decoration: const InputDecoration(
-        border: InputBorder.none,
-        fillColor: Color.fromARGB(31, 165, 165, 165),
-        filled: true,
-      ),
-      controller: TextEditingController(text: text),
-      keyboardType: const TextInputType.numberWithOptions(decimal: true),
-      inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'^[0-9.-]+'))],
-      onChanged: (value) {
-        onChange(value);
-      },
-    );
-  }
-}
-
-// ignore: must_be_immutable
-class ContentDropdown extends StatelessWidget {
-  ContentDropdown({super.key, this.value, required this.items, required this.onChange});
-
-  final String? value;
-  final List<String> items;
-  void Function(String? newValue) onChange;
-
-  @override
-  Widget build(BuildContext context) {
-    final String? dropdownValue = (value != null && items.contains(value)) ? value : items.first;
-
-    return DropdownButton<String>(
-      value: dropdownValue,
-      items: items
-          .map<DropdownMenuItem<String>>((String value) {
-        return DropdownMenuItem<String>(
-          value: value,
-          child: Text(value),
-        );
-      }).toList(),
-      onChanged: onChange,
-      underline: Container(color: Colors.transparent),
-    );
-  }
-}
-
-// ignore: must_be_immutable
-class ContentCheckbox extends StatelessWidget {
-  ContentCheckbox({super.key, required this.value, required this.onChange});
-
-  final bool value;
-  void Function(bool? value) onChange;
-
-  @override
-  Widget build(BuildContext context) {
-    return Checkbox(
-      // tristate: true,
-      value: value, 
-      onChanged: onChange,
-    );
-  }
-}
-
-class MyTextField extends StatelessWidget {
-  const MyTextField({super.key, required this.text, required this.onChange, this.color = const Color.fromARGB(255, 255, 255, 255)});
-
-  final String text;
-  final void Function(String value) onChange;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    return TextField(
-      decoration: InputDecoration(
-        border: const OutlineInputBorder(
-          borderRadius: BorderRadius.all(Radius.circular(4)),
-          borderSide: BorderSide.none,
-        ),
-        filled: true,
-        fillColor: color,
-        contentPadding: const EdgeInsets.symmetric(vertical: 5.0, horizontal: 5),
-      ),
-      controller: TextEditingController(text: text),
-      keyboardType: const TextInputType.numberWithOptions(decimal: true),
-      inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'^[0-9.-]+'))],
-      onChanged: (value) {onChange(value);},
-    );
-  }
-}
-
-class MyCheckbox extends StatelessWidget {
-  const MyCheckbox({super.key, required this.value, required this.onChanged});
-
-  final bool value;
-  final void Function(bool value) onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox.square(
-      // dimension: 25,
-      child: 
-    ToggleButtons(
-      isSelected: [value],
-      onPressed: (int index) {
-        onChanged(!value);
-      },
-      borderColor: MyColors.border,
-      selectedBorderColor: MyColors.border,
-      borderRadius: MyBorderRadius.circle,
-      borderWidth: 1,
-      color: const Color.fromARGB(0, 255, 255, 255),
-      fillColor: const Color.fromARGB(0, 255, 255, 255),
-      selectedColor: const Color.fromARGB(255, 0, 0, 0),
-      // constraints: BoxConstraints(
-      //   minWidth: 10,
-      //   minHeight: 10,
-      // ),
-      children: [
-        if(value)...{
-          const Icon(Icons.check)
-        }
-        else...{
-          const SizedBox()
-        }
-      ],
-    )
-    );
-  }
-}
-
-class MyToggleButtons extends StatelessWidget {
-  const MyToggleButtons({
-    super.key,  
-    required this.isSelected, required this.onPressed, required this.children,
-    this.direction = Axis.horizontal, this.width = 50, this.height = 50,
-  });
-
-  final List<bool> isSelected;
-  final void Function(int index) onPressed;
-  final List<Widget> children;
-  final Axis direction;
-  final double width, height;
-
-  @override
-  Widget build(BuildContext context) {
-    return ToggleButtons(
-      isSelected: isSelected,
-      onPressed: (int index) {
-        onPressed(index);
-      },
-      direction: direction,
-      constraints: BoxConstraints(
-        minWidth: width,
-        minHeight: height,
-      ),
-      children: children,
-    );
-  }
-}
 
 class MyAlign extends StatelessWidget {
   const MyAlign({
@@ -354,6 +66,7 @@ class MyScaffold extends StatelessWidget {
         children: [
           if(header != null)...{
             header!,
+            const Divider(height: 0, color: MyColors.border,),
           },
           Expanded(
             child: body ?? const SizedBox(),
@@ -364,24 +77,36 @@ class MyScaffold extends StatelessWidget {
   }
 }
 
-class MyHeaderMenu extends StatelessWidget {
-  const MyHeaderMenu({super.key, required this.children,});
+class MyHeader extends StatelessWidget {
+  const MyHeader({super.key, required this.children,});
 
   final List<Widget> children;
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      // height: 50,
+      height: MySize.headerHeight,
       width: double.infinity,
-      decoration: myBoxDecorationHeader,
+      color: Colors.white,
+      // 要素
       child: Row(
         children: [
-          const SizedBox(width: 10,),
+          const SizedBox(width: 5,),
           for(int i = 0; i < children.length; i++)...{
+            // 要素
             children[i],
-            const SizedBox(width: 10,),
-          }
+            if(i < children.length-1)...{
+              // 要素間のライン
+              Container(
+                margin: const EdgeInsets.only(
+                  left: 5,
+                  right: 5,
+                ),
+                child: const VerticalDivider(width: 0, color: MyColors.border,),
+              ),
+            },
+          },
+          const SizedBox(width: 5,),
         ],
       ),
     );
@@ -397,6 +122,13 @@ class MyDrawer extends Drawer {
   @override
   Widget build(BuildContext context) {
     return Drawer(
+      width: 200,
+      backgroundColor: Colors.white,
+      // ウィジェットの形
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.zero,
+      ),
+      // 要素
       child: ListView(
         children: <Widget>[
           for(int i = 0; i < itemList.length; i++)...{
@@ -413,8 +145,8 @@ class MyDrawer extends Drawer {
   }
 }
 
-class MyMenuIconButton extends StatelessWidget {
-  const MyMenuIconButton({super.key, required this.icon, required this.onPressed});
+class MyIconButton extends StatelessWidget {
+  const MyIconButton({super.key, required this.icon, required this.onPressed});
 
   final IconData icon;
   final void Function() onPressed;
@@ -428,8 +160,8 @@ class MyMenuIconButton extends StatelessWidget {
   }
 }
 
-class MyMenuToggleButtons extends StatelessWidget {
-  const MyMenuToggleButtons({super.key, required this.icons, required this.value, required this.onPressed});
+class MyIconToggleButtons extends StatelessWidget {
+  const MyIconToggleButtons({super.key, required this.icons, required this.value, required this.onPressed});
 
   final int value;
   final List<IconData> icons;
@@ -441,10 +173,12 @@ class MyMenuToggleButtons extends StatelessWidget {
     isSelected[value] = true;
 
     return ToggleButtons(
-      // constraints: const BoxConstraints(
-      //   minWidth: 50,
-      //   minHeight: 50,
-      // ),
+      constraints: const BoxConstraints(
+        minWidth: MySize.iconButton,
+        minHeight: MySize.iconButton,
+        maxWidth: MySize.iconButton,
+        maxHeight: MySize.iconButton,
+      ),
       borderColor: Colors.transparent,
       isSelected: isSelected,
       onPressed: onPressed,
@@ -483,6 +217,170 @@ class MyMenuDropdown extends StatelessWidget {
           }
         }
       },
+    );
+  }
+}
+
+class MySetting extends StatelessWidget {
+  const MySetting({super.key, this.titleName, this.buttonName, this.onPressed, required this.children,});
+
+  final String? titleName;
+  final String? buttonName;
+  final void Function()? onPressed;
+  final List<MySettingItem> children;
+
+  @override
+  Widget build(BuildContext context) {
+    return MyAlign(
+      alignment: Alignment.bottomCenter,
+      isIntrinsicWidth: true,
+      isIntrinsicHeight: true,
+      child: Container(
+        margin: const EdgeInsets.all(10),
+        padding: const EdgeInsets.all(5),
+        decoration: myBoxDecoration,
+        child: Column(
+          children: [
+            // タイトル
+            if(titleName != null)...{
+              Container(
+                height: 25,
+                alignment: Alignment.centerLeft,
+                padding: const EdgeInsets.only(left: 5, right: 5), 
+                child: Text(titleName!),
+              ),
+              const SizedBox(height: 2.5,),
+            },
+            // ウィジェットリスト
+            for(int i = 0; i < children.length; i++)...{
+              children[i],
+              if(i < children.length-1)...{
+                const SizedBox(height: 2.5,),
+              },
+            },
+            // ボタン
+            if(buttonName != null && onPressed != null)...{
+              const SizedBox(height: 2.5,),
+              SizedBox(
+                width: double.infinity,
+                height: 25,
+                child: Row(
+                  children: [
+                    const Expanded(child: SizedBox(), ),
+                    ElevatedButton(
+                      onPressed: () {
+                        onPressed!();
+                      },
+                      style: myButtonStyleBorder,
+                      child: Text(buttonName!),
+                    ),
+                  ],
+                ),
+              )
+            }
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class MySettingItem extends StatelessWidget {
+  const MySettingItem({super.key, this.titleName = "", required this.children});
+
+  final String titleName;
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 25,
+      alignment: Alignment.center,
+      child: Row(
+        children: [
+          // タイトル
+          Container(
+            width: 75, 
+            alignment: Alignment.centerLeft, 
+            padding: const EdgeInsets.only(left: 5, right: 5), 
+            child: Text(titleName),
+          ),
+          // ウィジェットリスト
+          for(int i = 0; i < children.length; i++)...{
+            const SizedBox(width: 10,),
+            children[i],
+          },
+        ],
+      )
+    );
+  }
+}
+
+class MySettingTextField extends StatelessWidget {
+  const MySettingTextField({super.key, required this.name, required this.text, required this.onChanged,});
+
+  final String name;
+  final String text;
+  final void Function(String value) onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        // ラベル
+        Container(
+          width: 100, 
+          alignment: Alignment.centerRight, 
+          padding: const EdgeInsets.only(left: 5, right: 5), 
+          child: Text(name),
+        ),
+        // テキストフィールド
+        SizedBox(
+          width: 100, 
+          child: TextField(
+            controller: TextEditingController(text: text),
+            inputFormatters: myInputFormattersNumber,
+            decoration: myInputDecoration,
+            onChanged: (value) {
+              onChanged(value);
+            },
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class MySettingCheckbox extends StatelessWidget {
+  const MySettingCheckbox({super.key, required this.name, required this.value, required this.onChanged});
+
+  final String name;
+  final bool value;
+  final void Function(bool value) onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        // ラベル
+        Container(
+          width: 100, 
+          alignment: Alignment.centerRight, 
+          padding: const EdgeInsets.only(left: 5, right: 5), 
+          child: Text(name),
+        ),
+        // チェックボックス
+        Container(
+          width: 100, 
+          alignment: Alignment.centerLeft, 
+          child: Checkbox(
+            value: value,
+            onChanged: (value) {
+              onChanged(value!);
+            },
+          ),
+        ),
+      ],
     );
   }
 }

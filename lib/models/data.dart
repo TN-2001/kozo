@@ -10,165 +10,150 @@ class Data{
   Data({required this.onDebug});
   final Function(String value) onDebug;
 
+  // データ
   int elemNode = 2;
   List<Node> nodeList = List.empty(growable: true);
   List<Elem> elemList = List.empty(growable: true);
   List<Mat> matList = List.empty(growable: true);
+  // 追加データ
+  Node? node;
+  Elem? elem;
+  // 全データ
+  List<Node> allNodeList(){
+    List<Node> n = List.empty(growable: true);
+
+    for(int i = 0; i < nodeList.length; i++){
+      n.add(nodeList[i]);
+    }
+    if(node != null){
+      node!.isSelect = true;
+      n.add(node!);
+    }
+
+    return n;
+  }
+  List<Elem> allElemList(){
+    List<Elem> e = List.empty(growable: true);
+
+    for(int i = 0; i < elemList.length; i++){
+      e.add(elemList[i]);
+    }
+    if(elem != null){
+      elem!.isSelect = true;
+      e.add(elem!);
+    }
+
+    return e;
+  }
 
   bool isCalculation = false;
   List<double> resultList = List.empty(growable: true);
   double resultMin = 0, resultMax = 0;
   int type = 0;
-  // 選択タイプ（0:節点）
-  int selectType = 0;
   // 選択番号
   int selectedNumber = -1;
-  // キャンバスのサイズ
-  late double width, height = 0;
-  // データの座標のキャンバス上での倍率
-  double canvasPerData = 1;
-  // キャンバス上での原点座標
-  Offset canvasOrigin = Offset.zero;
 
+  void addNode(){
+    // バグ対策
+    if(node == null) return;
+    for(int i = 0; i < nodeList.length; i++){
+      if(node!.pos.dx == nodeList[i].pos.dx && node!.pos.dy == nodeList[i].pos.dy){
+        return;
+      }
+    }
+
+    // 追加
+    nodeList.add(node!);
+    node = Node();
+    node!.number = nodeList.length;
+  }
   void removeNode(int number){
+    // バグ対策
+    if(nodeList.length-1 < number && nodeList.isNotEmpty) return;
+
+    // 節点を使っている要素の削除
+    for(int i = elemList.length-1; i >= 0; i--){
+      for(int j = 0; j < elemNode; j++){
+        if(elemList[i].nodes[j]!.number == number){
+          removeElem(i);
+        }
+      }
+    }
+
+    // 節点の削除
     nodeList.removeAt(number);
 
-    if(nodeList.isNotEmpty){
-      for(int i = 0; i < elemList.length; i++){
-        for(int j = 0; j < elemList[i].nodeList.length; j++){
-          // 要素で消された節点を選択していたら0番節点にする
-          if(elemList[i].nodeList[j] == number - 1){
-            elemList[i].nodeList[j] = 0;
-          }
-          // 要素で消された節点より後の節点を選択していたら一つ前にする
-          else if(elemList[i].nodeList[j] > number - 1){
-            elemList[i].nodeList[j] -= 1;
+    // 節点の番号を修正
+    for(int i = 0; i < nodeList.length; i++){
+      nodeList[i].number = i;
+    }
+  }
+  void addElem(){
+    // バグ対策
+    if(elem == null) return;
+    for(int i = 0; i < elemNode; i++){
+      if(elem!.nodes[1] == null) return;
+    }
+    for(int i = 0; i < elemNode; i++){
+      for(int j = 0; j < elemNode; j++){
+        if(i != j && elem!.nodes[i] == elem!.nodes[j]){
+          return;
+        }
+      }
+    }
+    for(int e = 0; e < elemList.length; e++){
+      int count = 0;
+      for(int i = 0; i < elemNode; i++){
+        for(int j = 0; j < elemNode; j++){
+          if(elem!.nodes[i] == elemList[e].nodes[j]){
+            count ++;
+            if(count == elemNode){
+              return;
+            }
           }
         }
       }
     }
-    else{
-      elemList.clear();
+
+    // 追加
+    elemList.add(elem!);
+    elem = Elem();
+    elem!.number = elemList.length;
+  }
+  void removeElem(int number){
+    // バグ対策
+    if(elemList.length-1 < number && elemList.isNotEmpty) return;
+
+    // 要素の削除
+    elemList.removeAt(number);
+
+    // 要素の番号を修正
+    for(int i = 0; i < elemList.length; i++){
+      elemList[i].number = i;
     }
   }
 
   // 解析
+  bool isCanCalculation(){
+    if(nodeList.isEmpty) return false;
+    if(elemList.isEmpty) return false;
+    for(int i = 0; i < elemList.length; i++){
+      if(elemList[i].e <= 0 || elemList[i].v <= 0){
+        return false;
+      }
+    }
+
+    return true;
+  }
   void calculation(){
     if(nodeList.isEmpty) return;
 
-    if(elemNode == 2){
-      truss();
-      isCalculation = true;
-    }else if(elemNode == 3){
+    if(elemNode == 3){
       lcst2ebe();
       isCalculation = true;
     }else if(elemNode == 4){
       lcst2ebe4();
       isCalculation = true;
-    }
-  }
-  void truss(){ // トラス
-    // 要素データ
-    List<double> lengthList = List.empty(growable: true);
-    List<double> cosList = List.empty(growable: true);
-    List<double> sinList = List.empty(growable: true);
-
-    for(int i = 0; i < elemList.length; i++){
-      Offset pos0 = nodeList[elemList[i].nodeList[0]].pos;
-      Offset pos1 = nodeList[elemList[i].nodeList[1]].pos;
-
-      lengthList.add((pos1 - pos0).distance);
-
-      double angle = math.atan2(pos1.dy - pos0.dy, pos1.dx - pos0.dx);
-      cosList.add(math.cos(angle));
-      sinList.add(math.sin(angle));
-    }
-
-    // 全体剛性行列
-    List<List<double>> kkk = List.generate(nodeList.length * 2, (i) => List.generate(nodeList.length * 2, (j) => 0.0));
-    
-    for(int i = 0; i < elemList.length; i++){
-      double eal = elemList[i].e * elemList[i].v / lengthList[i];
-      double k11 = eal * cosList[i] * cosList[i];
-      double k12 = eal * cosList[i] * sinList[i];
-      double k21 = k12;
-      double k22 = eal * sinList[i] * sinList[i];
-
-      kkk[elemList[i].nodeList[0]*2][elemList[i].nodeList[0]*2] += k11;
-      kkk[elemList[i].nodeList[0]*2][elemList[i].nodeList[0]*2+1] += k12;
-      kkk[elemList[i].nodeList[0]*2+1][elemList[i].nodeList[0]*2] += k21;
-      kkk[elemList[i].nodeList[0]*2+1][elemList[i].nodeList[0]*2+1] += k22;
-
-      kkk[elemList[i].nodeList[0]*2][elemList[i].nodeList[1]*2] -= k11;
-      kkk[elemList[i].nodeList[0]*2][elemList[i].nodeList[1]*2+1] -= k12;
-      kkk[elemList[i].nodeList[0]*2+1][elemList[i].nodeList[1]*2] -= k21;
-      kkk[elemList[i].nodeList[0]*2+1][elemList[i].nodeList[1]*2+1] -= k22;
-
-      kkk[elemList[i].nodeList[1]*2][elemList[i].nodeList[0]*2] -= k11;
-      kkk[elemList[i].nodeList[1]*2][elemList[i].nodeList[0]*2+1] -= k12;
-      kkk[elemList[i].nodeList[1]*2+1][elemList[i].nodeList[0]*2] -= k21;
-      kkk[elemList[i].nodeList[1]*2+1][elemList[i].nodeList[0]*2+1] -= k22;
-
-      kkk[elemList[i].nodeList[1]*2][elemList[i].nodeList[1]*2] += k11;
-      kkk[elemList[i].nodeList[1]*2][elemList[i].nodeList[1]*2+1] += k12;
-      kkk[elemList[i].nodeList[1]*2+1][elemList[i].nodeList[1]*2] += k21;
-      kkk[elemList[i].nodeList[1]*2+1][elemList[i].nodeList[1]*2+1] += k22;
-    }
-
-    // 縮約行列
-    List<List<double>> kk = List.generate(kkk.length, (i) => List.generate(kkk[i].length, (j) => kkk[i][j]));
-
-    for(int i = nodeList.length - 1; i > - 1; i--){
-      if(nodeList[i].constXY[1]){
-        for (var row in kk) {
-          row.removeAt(i*2+1);
-        }
-        kk.removeAt(i*2+1);
-      }
-      if(nodeList[i].constXY[0]){
-        for (var row in kk) {
-          row.removeAt(i*2);
-        }
-        kk.removeAt(i*2);
-      }
-    }
-
-    // 荷重
-    List<double> powList = List.empty(growable: true);
-    for(int i = 0; i < nodeList.length; i++){
-      if(nodeList[i].constXY[0] == false){
-        powList.add(nodeList[i].loadXY[0]);
-      }
-      if(nodeList[i].constXY[1] == false) powList.add(nodeList[i].loadXY[1]);
-    }
-
-    List<double> becList = Calculator().conjugateGradient(kk, powList, 100, 1e-10);
-    int count = 0;
-    for(int i = 0; i < nodeList.length; i++){
-      if(nodeList[i].constXY[0] == false){
-        nodeList[i].becPos = Offset(becList[count], nodeList[i].becPos.dy);
-        count ++;
-      }
-      if(nodeList[i].constXY[1] == false){
-        nodeList[i].becPos = Offset(nodeList[i].becPos.dx, becList[count]);
-        count ++;
-      }
-    }
-
-    // 変位計算
-    for(int i = 0; i < nodeList.length; i++){
-      nodeList[i].afterPos = Offset(nodeList[i].pos.dx + nodeList[i].becPos.dx, nodeList[i].pos.dy + nodeList[i].becPos.dy);
-    }
-
-    // ひずみ
-    for(int i = 0; i < elemList.length; i++){
-      elemList[i].strainXY[0] = ((cosList[i]*nodeList[elemList[i].nodeList[1]].becPos.dx + sinList[i]*nodeList[elemList[i].nodeList[1]].becPos.dy) 
-        - (cosList[i]*nodeList[elemList[i].nodeList[0]].becPos.dx + sinList[i]*nodeList[elemList[i].nodeList[0]].becPos.dy)) / lengthList[i];
-    }
-
-    // 応力
-    for(int i = 0; i < elemList.length; i++){
-      elemList[i].stlessXY[0] = elemList[i].e * elemList[i].strainXY[0];
     }
   }
   void lcst2ebe(){ // 三角形
@@ -255,7 +240,6 @@ class Data{
     // 結果入手
     for (int i = 0; i < lcst2ebe.nx; i++) {
       nodeList[i].becPos = Offset(result.$1[lcst2ebe.nd*i], result.$1[lcst2ebe.nd*i+1]);
-      nodeList[i].afterPos = nodeList[i].becPos + nodeList[i].pos;
     }
 
     for (int i = 0; i < lcst2ebe.nelx; i++) {
@@ -348,7 +332,6 @@ class Data{
     // 結果入手
     for (int i = 0; i < lcst2ebe4.nx; i++) {
       nodeList[i].becPos = Offset(result.$1[lcst2ebe4.nd*i], result.$1[lcst2ebe4.nd*i+1]);
-      nodeList[i].afterPos = nodeList[i].becPos + nodeList[i].pos;
     }
 
     for (int i = 0; i < lcst2ebe4.nelx; i++) {
@@ -377,7 +360,6 @@ class Data{
     for (int n2 = 0; n2 < npx2+1; n2++) {
       for (int n1 = 0; n1 < npx1+1; n1++) {
         nodeList[(npx1+1)*(npx2-n2)+n1].becPos = Offset(result.$1[((npx1+1)*n2+n1)*nd], result.$1[((npx1+1)*n2+n1)*nd+1]);
-        nodeList[(npx1+1)*(npx2-n2)+n1].afterPos = nodeList[(npx1+1)*(npx2-n2)+n1].becPos + nodeList[(npx1+1)*(npx2-n2)+n1].pos;
       }
     }
     // 変位を最大3に変更
@@ -389,7 +371,6 @@ class Data{
     for (int n2 = 0; n2 < npx2+1; n2++) {
       for (int n1 = 0; n1 < npx1+1; n1++) {
         nodeList[(npx1+1)*(npx2-n2)+n1].becPos *= size;
-        nodeList[(npx1+1)*(npx2-n2)+n1].afterPos = nodeList[(npx1+1)*(npx2-n2)+n1].becPos + nodeList[(npx1+1)*(npx2-n2)+n1].pos;
       }
     }
 
@@ -412,9 +393,7 @@ class Data{
     selectedNumber = -1;
   }
   void calculationTruss(){
-    if(elemList.isEmpty){
-      return;
-    }
+    if(!isCanCalculation()) return;
 
     // 要素データ
     List<double> lengthList = List.empty(growable: true);
@@ -422,8 +401,8 @@ class Data{
     List<double> sinList = List.empty(growable: true);
 
     for(int i = 0; i < elemList.length; i++){
-      Offset pos0 = elemList[i].nodes[0].pos;
-      Offset pos1 = elemList[i].nodes[1].pos;
+      Offset pos0 = elemList[i].nodes[0]!.pos;
+      Offset pos1 = elemList[i].nodes[1]!.pos;
 
       lengthList.add((pos1 - pos0).distance);
 
@@ -442,25 +421,25 @@ class Data{
       double k21 = k12;
       double k22 = eal * sinList[i] * sinList[i];
 
-      kkk[elemList[i].nodes[0].number*2][elemList[i].nodes[0].number*2] += k11;
-      kkk[elemList[i].nodes[0].number*2][elemList[i].nodes[0].number*2+1] += k12;
-      kkk[elemList[i].nodes[0].number*2+1][elemList[i].nodes[0].number*2] += k21;
-      kkk[elemList[i].nodes[0].number*2+1][elemList[i].nodes[0].number*2+1] += k22;
+      kkk[elemList[i].nodes[0]!.number*2][elemList[i].nodes[0]!.number*2] += k11;
+      kkk[elemList[i].nodes[0]!.number*2][elemList[i].nodes[0]!.number*2+1] += k12;
+      kkk[elemList[i].nodes[0]!.number*2+1][elemList[i].nodes[0]!.number*2] += k21;
+      kkk[elemList[i].nodes[0]!.number*2+1][elemList[i].nodes[0]!.number*2+1] += k22;
 
-      kkk[elemList[i].nodes[0].number*2][elemList[i].nodes[1].number*2] -= k11;
-      kkk[elemList[i].nodes[0].number*2][elemList[i].nodes[1].number*2+1] -= k12;
-      kkk[elemList[i].nodes[0].number*2+1][elemList[i].nodes[1].number*2] -= k21;
-      kkk[elemList[i].nodes[0].number*2+1][elemList[i].nodes[1].number*2+1] -= k22;
+      kkk[elemList[i].nodes[0]!.number*2][elemList[i].nodes[1]!.number*2] -= k11;
+      kkk[elemList[i].nodes[0]!.number*2][elemList[i].nodes[1]!.number*2+1] -= k12;
+      kkk[elemList[i].nodes[0]!.number*2+1][elemList[i].nodes[1]!.number*2] -= k21;
+      kkk[elemList[i].nodes[0]!.number*2+1][elemList[i].nodes[1]!.number*2+1] -= k22;
 
-      kkk[elemList[i].nodes[1].number*2][elemList[i].nodes[0].number*2] -= k11;
-      kkk[elemList[i].nodes[1].number*2][elemList[i].nodes[0].number*2+1] -= k12;
-      kkk[elemList[i].nodes[1].number*2+1][elemList[i].nodes[0].number*2] -= k21;
-      kkk[elemList[i].nodes[1].number*2+1][elemList[i].nodes[0].number*2+1] -= k22;
+      kkk[elemList[i].nodes[1]!.number*2][elemList[i].nodes[0]!.number*2] -= k11;
+      kkk[elemList[i].nodes[1]!.number*2][elemList[i].nodes[0]!.number*2+1] -= k12;
+      kkk[elemList[i].nodes[1]!.number*2+1][elemList[i].nodes[0]!.number*2] -= k21;
+      kkk[elemList[i].nodes[1]!.number*2+1][elemList[i].nodes[0]!.number*2+1] -= k22;
 
-      kkk[elemList[i].nodes[1].number*2][elemList[i].nodes[1].number*2] += k11;
-      kkk[elemList[i].nodes[1].number*2][elemList[i].nodes[1].number*2+1] += k12;
-      kkk[elemList[i].nodes[1].number*2+1][elemList[i].nodes[1].number*2] += k21;
-      kkk[elemList[i].nodes[1].number*2+1][elemList[i].nodes[1].number*2+1] += k22;
+      kkk[elemList[i].nodes[1]!.number*2][elemList[i].nodes[1]!.number*2] += k11;
+      kkk[elemList[i].nodes[1]!.number*2][elemList[i].nodes[1]!.number*2+1] += k12;
+      kkk[elemList[i].nodes[1]!.number*2+1][elemList[i].nodes[1]!.number*2] += k21;
+      kkk[elemList[i].nodes[1]!.number*2+1][elemList[i].nodes[1]!.number*2+1] += k22;
     }
 
     // 縮約行列
@@ -487,11 +466,10 @@ class Data{
       if(nodeList[i].constXY[0] == false){
         powList.add(nodeList[i].loadXY[0]);
       }
-      if(nodeList[i].constXY[1] == false){
-        powList.add(nodeList[i].loadXY[1]);
-      }
+      if(nodeList[i].constXY[1] == false) powList.add(nodeList[i].loadXY[1]);
     }
 
+    // 変位計算
     List<double> becList = Calculator().conjugateGradient(kk, powList, 100, 1e-10);
     int count = 0;
     for(int i = 0; i < nodeList.length; i++){
@@ -505,15 +483,10 @@ class Data{
       }
     }
 
-    // 変位計算
-    for(int i = 0; i < nodeList.length; i++){
-      nodeList[i].afterPos = Offset(nodeList[i].pos.dx + nodeList[i].becPos.dx, nodeList[i].pos.dy + nodeList[i].becPos.dy);
-    }
-
     // ひずみ
     for(int i = 0; i < elemList.length; i++){
-      elemList[i].strainXY[0] = ((cosList[i]*elemList[i].nodes[1].becPos.dx + sinList[i]*elemList[i].nodes[1].becPos.dy) 
-        - (cosList[i]*elemList[i].nodes[0].becPos.dx + sinList[i]*elemList[i].nodes[0].becPos.dy)) / lengthList[i];
+      elemList[i].strainXY[0] = ((cosList[i]*elemList[i].nodes[1]!.becPos.dx + sinList[i]*elemList[i].nodes[1]!.becPos.dy) 
+        - (cosList[i]*elemList[i].nodes[0]!.becPos.dx + sinList[i]*elemList[i].nodes[0]!.becPos.dy)) / lengthList[i];
     }
 
     // 応力
@@ -525,9 +498,6 @@ class Data{
   }
 
   void resetCalculation(){
-    for(int i = 0; i < nodeList.length; i++){
-      nodeList[i].afterPos = const Offset(0, 0);
-    }
     for(int i = 0; i < elemList.length; i++){
       for(int j = 0; j < elemList[i].stlessXY.length; j++){
         elemList[i].stlessXY[j] = 0;
@@ -540,37 +510,40 @@ class Data{
     isCalculation = false;
   }
 
-  List<Node> getCanvasNodeList(double width, double height){
-    if(nodeList.isEmpty) return List.empty();
+  // キャンバス上の座標を更新
+  void updateCanvasPos(Offset topLeftPos, Offset bottomRightPos){
+    // ノードがなかったら実行しない
+    if(nodeList.isEmpty && node == null) return;
 
-    this.width = width;
-    this.height = height;
+    // キャンバスサイズ
+    double width = bottomRightPos.dx - topLeftPos.dx;
+    double height = bottomRightPos.dy - topLeftPos.dy;
 
-    List<Node> canvasNodeList = List.empty(growable: true);
-
+    List<Node> setNodeList = List.empty(growable: true);
     for(int i = 0; i < nodeList.length; i++){
-      canvasNodeList.add(Node());
-      canvasNodeList[i].constXY = nodeList[i].constXY;
-      canvasNodeList[i].loadXY = nodeList[i].loadXY;
+      setNodeList.add(nodeList[i]);
+    }
+    if(node != null){
+      setNodeList.add(node!);
     }
 
     // 節点座標の最大最小
-    double minX = nodeList[0].pos.dx;
-    double maxX = nodeList[0].pos.dx;
-    double minY = nodeList[0].pos.dy;
-    double maxY = nodeList[0].pos.dy;
+    double minX = setNodeList[0].pos.dx;
+    double maxX = setNodeList[0].pos.dx;
+    double minY = setNodeList[0].pos.dy;
+    double maxY = setNodeList[0].pos.dy;
 
-    if(nodeList.length > 1){
-      for (int i = 1; i < nodeList.length; i++) {
-        minX = math.min(minX, nodeList[i].pos.dx);
-        maxX = math.max(maxX, nodeList[i].pos.dx);
-        minY = math.min(minY, nodeList[i].pos.dy);
-        maxY = math.max(maxY, nodeList[i].pos.dy);
+    if(setNodeList.length > 1){
+      for (int i = 1; i < setNodeList.length; i++) {
+        minX = math.min(minX, setNodeList[i].pos.dx);
+        maxX = math.max(maxX, setNodeList[i].pos.dx);
+        minY = math.min(minY, setNodeList[i].pos.dy);
+        maxY = math.max(maxY, setNodeList[i].pos.dy);
       }
     }
 
     // 拡大率
-    canvasPerData = 1;
+    double canvasPerData = 1;
     double xpar = (maxX-minX)/(width == 0 ? 1 : width); 
     double ypar = (maxY-minY)/(height == 0 ? 1 : height);
     if (xpar > 0 || ypar > 0) { 
@@ -583,28 +556,29 @@ class Data{
 
     // 原点
     Offset midPos = Offset((minX+maxX)/2, (minY+maxY)/2);
-    canvasOrigin = Offset(width/2 - midPos.dx*canvasPerData, height/2 - midPos.dy*canvasPerData);
+    Offset canvasOrigin = Offset(width/2 - midPos.dx*canvasPerData, height/2 - midPos.dy*canvasPerData);
 
     // 節点座標
-    List<Offset> pos = List.empty(growable: true);
-    for(int i = 0; i < nodeList.length; i++){
-      pos.add(Offset(nodeList[i].pos.dx*canvasPerData + canvasOrigin.dx, nodeList[i].pos.dy*canvasPerData + canvasOrigin.dy));
+    for(int i = 0; i < setNodeList.length; i++){
+      setNodeList[i].canvasPos = Offset(setNodeList[i].pos.dx*canvasPerData + canvasOrigin.dx, setNodeList[i].pos.dy*canvasPerData + canvasOrigin.dy);
       // y座標を逆に
-      pos[i] = Offset(pos[i].dx, height - pos[i].dy);
+      setNodeList[i].canvasPos = Offset(setNodeList[i].canvasPos.dx, height - setNodeList[i].canvasPos.dy);
+      // ずれを修正
+      setNodeList[i].canvasPos += topLeftPos;
     }
 
     // 変位絶対値の最大最小
-    double bminX = nodeList[0].becPos.dx.abs();
-    double bmaxX = nodeList[0].becPos.dx.abs();
-    double bminY = nodeList[0].becPos.dy.abs();
-    double bmaxY = nodeList[0].becPos.dy.abs();
+    double bminX = setNodeList[0].becPos.dx.abs();
+    double bmaxX = setNodeList[0].becPos.dx.abs();
+    double bminY = setNodeList[0].becPos.dy.abs();
+    double bmaxY = setNodeList[0].becPos.dy.abs();
 
-    if(nodeList.length > 1){
-      for (int i = 1; i < nodeList.length; i++) {
-        bminX = math.min(bminX, nodeList[i].becPos.dx.abs());
-        bmaxX = math.max(bmaxX, nodeList[i].becPos.dx.abs());
-        bminY = math.min(bminY, nodeList[i].becPos.dy.abs());
-        bmaxY = math.max(bmaxY, nodeList[i].becPos.dy.abs());
+    if(setNodeList.length > 1){
+      for (int i = 1; i < setNodeList.length; i++) {
+        bminX = math.min(bminX, setNodeList[i].becPos.dx.abs());
+        bmaxX = math.max(bmaxX, setNodeList[i].becPos.dx.abs());
+        bminY = math.min(bminY, setNodeList[i].becPos.dy.abs());
+        bmaxY = math.max(bmaxY, setNodeList[i].becPos.dy.abs());
       }
     }
 
@@ -621,17 +595,9 @@ class Data{
     }
 
     // 計算後の節点座標
-    List<Offset> afterPos = List.empty(growable: true);
-    for(int i = 0; i < nodeList.length; i++){
-      afterPos.add(Offset(pos[i].dx + nodeList[i].becPos.dx * bscale, pos[i].dy - nodeList[i].becPos.dy * bscale));
+    for(int i = 0; i < setNodeList.length; i++){
+      setNodeList[i].canvasBecPos = Offset(setNodeList[i].becPos.dx * bscale, - setNodeList[i].becPos.dy * bscale);
     }
-
-    for(int i = 0; i < pos.length; i++){
-      canvasNodeList[i].pos = pos[i];
-      canvasNodeList[i].afterPos = afterPos[i];
-    }
-
-    return canvasNodeList;
   }
 
   // 端の座標取得
@@ -685,14 +651,22 @@ class Data{
   }
 
   // ある座標に要素があるか
+  void initSelect(){
+    selectedNumber = -1;
+    for(int i = 0; i < elemList.length; i++){
+      elemList[i].isSelect = false;
+    }
+    for(int i = 0; i < nodeList.length; i++){
+      nodeList[i].isSelect = false;
+    }
+  }
   void selectElem(Offset pos){
-    selectedNumber = -1;    
+    initSelect();
 
     for(int i = 0; i < elemList.length; i++){
       List<Offset> nodePosList = List.empty(growable: true);
       for(int j = 0; j < elemNode; j++){
-        Node node = nodeList[elemList[i].nodeList[j]];
-        nodePosList.add(Offset(node.pos.dx*canvasPerData + canvasOrigin.dx, height - (node.pos.dy*canvasPerData + canvasOrigin.dy)));
+        nodePosList.add(elemList[i].nodes[j]!.canvasPos);
       }
 
       if(elemNode == 2){
@@ -700,6 +674,7 @@ class Data{
 
         if(distance < 10){
           selectedNumber = i;
+          elemList[i].isSelect = true;
           return;
         }
       }
@@ -718,11 +693,11 @@ class Data{
         int crossings = 0;
 
         for (int j = 0; j < elemNode; j++) {
-          Offset p1 = elemList[i].nodes[j].pos;
-          Offset p2 = elemList[i].nodes[(j + 1) % elemNode].pos;
+          Offset p1 = elemList[i].nodes[j]!.pos;
+          Offset p2 = elemList[i].nodes[(j + 1) % elemNode]!.pos;
           if(isCalculation){
-            p1 = elemList[i].nodes[j].afterPos;
-            p2 = elemList[i].nodes[(j + 1) % elemNode].afterPos;
+            p1 = elemList[i].nodes[j]!.afterPos();
+            p2 = elemList[i].nodes[(j + 1) % elemNode]!.afterPos();
           }
 
           if ((p1.dy > pos.dy) != (p2.dy > pos.dy)) {
@@ -742,113 +717,17 @@ class Data{
     }
   }
   void selectNode(Offset pos){
-    selectedNumber = -1;
+    initSelect();
 
     for(int i = 0; i < nodeList.length; i++){
-      Offset nodePos = Offset(nodeList[i].pos.dx*canvasPerData + canvasOrigin.dx, height - (nodeList[i].pos.dy*canvasPerData + canvasOrigin.dy));
-      double dis = (nodePos - pos).distance;
+      double dis = (nodeList[i].canvasPos - pos).distance;
       if(dis <= 10.0){
         selectedNumber = i;
+        nodeList[i].isSelect = true;
         break;
       }
     }
   }
-
-  // 整数座標に配置
-  void addIntNode(Offset pos){
-    int x = pos.dx.round();
-    int y = pos.dy.round();
-
-    for(int i = 0; i < nodeList.length; i++){
-      if(x == nodeList[i].pos.dx.round() && y == nodeList[i].pos.dy.round()){
-        return;
-      }
-    }
-
-    Node node = Node();
-    node.pos = Offset(x.toDouble(), y.toDouble());
-    nodeList.add(node);
-
-    // ノード番号
-    for(int i = 0; i < nodeList.length; i++){
-      nodeList[i].number = i;
-    }
-  }
-  Node? getIntNode(Offset pos){
-    int x = pos.dx.round();
-    int y = pos.dy.round();
-
-    for(int i = 0; i < nodeList.length; i++){
-      if(x == nodeList[i].pos.dx.round() && y == nodeList[i].pos.dy.round()){
-        return nodeList[i];
-      }
-    }
-
-    return null;
-  }
-  void removeIntNode(Node node){
-    if(nodeList.isNotEmpty){
-      // 要素の削除
-      for(int i = 0; i < elemList.length; i++){
-        for(int j = 0; j < elemList[i].nodes.length; j++){
-          if(node == elemList[i].nodes[j]){
-            elemList.remove(elemList[i]);
-          }
-        }
-      }
-      // 節点の削除
-      nodeList.remove(node);
-    }
-
-    // ノード番号
-    for(int i = 0; i < nodeList.length; i++){
-      nodeList[i].number = i;
-    }
-  }
-  void addElem(List<Node> nodeList){
-    // 同じノードがないか確認
-    for(int i = 0; i < nodeList.length; i++){
-      for(int j = 0; j < nodeList.length; j++){
-        if(i != j && nodeList[i] == nodeList[j]){
-          return;
-        }
-      }
-    }
-    // 既存の要素とかぶってないか確認
-    for(int e = 0; e < elemList.length; e++){
-      int count = 0;
-      for(int i = 0; i < nodeList.length; i++){
-        for(int j = 0; j < nodeList.length; j++){
-          if(nodeList[i] == elemList[e].nodes[j]){
-            count ++;
-            if(count == nodeList.length){
-              return;
-            }
-          }
-        }
-      }
-    }
-    
-    Elem elem = Elem();
-    elem.e = 1;
-    elem.v = 1;
-    for(int i = 0; i < nodeList.length; i++){
-      elem.nodes.add(nodeList[i]);
-    }
-    elemList.add(elem);
-  }
-  Elem? getElem(Offset pos){
-    for(int i = 0; i < elemList.length; i++){
-      double distance = distanceFromPointToSegment(elemList[i].nodes[0].pos, elemList[i].nodes[1].pos, pos);
-
-      if(distance < 1){
-        selectedNumber = i;
-        return elemList[i];
-      }
-    }
-    return null;
-  }
-
 
   // 計算結果の最大最小
   (double max, double min) getValue(){
@@ -943,6 +822,7 @@ class Data{
 }
 
 class Node{
+  // 基本データ
   int number = 0;
   Offset pos = const Offset(0, 0);
   List<bool> constXY = [false, false];
@@ -950,19 +830,31 @@ class Node{
 
   // 計算結果
   Offset becPos = const Offset(0, 0);
-  Offset afterPos = const Offset(0, 0);
+  Offset afterPos(){return Offset(pos.dx+becPos.dx, pos.dy+becPos.dy);}
+
+  // キャンバス座標
+  Offset canvasPos = const Offset(0, 0);
+  Offset canvasBecPos = const Offset(0, 0);
+  Offset canvasAfterPos(){return Offset(canvasPos.dx+canvasBecPos.dx, canvasPos.dy+canvasBecPos.dy);}
+
+  // 選択されているか
+  bool isSelect = false;
 }
 class Elem{
+  // 基本データ
   int number = 0;
   List<int> nodeList = [0, 0, 0, 0];
   double e = 0;
   double v = 0;
-  List<Node> nodes = List.empty(growable: true);
+  List<Node?> nodes = [null, null, null, null];
   Mat? mat;
 
   // 計算結果
   List<double> strainXY = [0,0,0]; // 0:X方向の正規ひずみ、1:Y方向の正規ひずみ、2:XY方向のせん断ひずみ
   List<double> stlessXY = [0,0,0,0,0]; // 0:X方向の正規応力、1:Y方向の正規応力、2:XY方向のせん断応力、3:最大主応力、4:最小主応力
+
+  // 選択されているか
+  bool isSelect = false;
 }
 class Mat{
   int number = 0;

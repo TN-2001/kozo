@@ -105,7 +105,7 @@ class Painter{
     final textSpan = TextSpan(
       text: text,
       style: TextStyle(
-        color: Colors.black,
+        color: color,
         fontSize: fontSize,
       ),
     );
