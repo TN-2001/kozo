@@ -400,15 +400,29 @@ class TrussPainter extends CustomPainter {
           }else{
             paint.color = Colors.black;
           }
-          Offset pos = data.allNodeList()[i].canvasPos;
-          if(data.allNodeList()[i].constXY[0]){
-            canvas.drawLine(Offset(pos.dx-5, pos.dy-5), Offset(pos.dx-5, pos.dy+5), paint);
-            canvas.drawLine(Offset(pos.dx+5, pos.dy-5), Offset(pos.dx+5, pos.dy+5), paint);
+          // Offset pos = data.allNodeList()[i].canvasPos;
+          paint.style = PaintingStyle.fill;
+          if(data.allNodeList()[i].constXY[0] && data.allNodeList()[i].constXY[1]){
+            paint.color = const Color.fromARGB(255, 0, 0, 0);
           }
-          if(data.allNodeList()[i].constXY[1]){
-            canvas.drawLine(Offset(pos.dx-5, pos.dy-5), Offset(pos.dx+5, pos.dy-5), paint);
-            canvas.drawLine(Offset(pos.dx-5, pos.dy+5), Offset(pos.dx+5, pos.dy+5), paint);
+          else if(data.allNodeList()[i].constXY[0]){
+            paint.color = Colors.green;
           }
+          else if(data.allNodeList()[i].constXY[1]){
+            paint.color = Colors.blue;
+          }
+          else{
+            paint.color = Colors.white;
+          }
+          canvas.drawCircle(data.allNodeList()[i].canvasPos, 5, paint);
+          // if(data.allNodeList()[i].constXY[0]){
+          //   canvas.drawLine(Offset(pos.dx-5, pos.dy-5), Offset(pos.dx-5, pos.dy+5), paint);
+          //   canvas.drawLine(Offset(pos.dx+5, pos.dy-5), Offset(pos.dx+5, pos.dy+5), paint);
+          // }
+          // if(data.allNodeList()[i].constXY[1]){
+          //   canvas.drawLine(Offset(pos.dx-5, pos.dy-5), Offset(pos.dx+5, pos.dy-5), paint);
+          //   canvas.drawLine(Offset(pos.dx-5, pos.dy+5), Offset(pos.dx+5, pos.dy+5), paint);
+          // }
         }
       }
 
@@ -449,10 +463,10 @@ class TrussPainter extends CustomPainter {
 
       if(data.allNodeList().isNotEmpty){
         for(int i = 0; i < data.allNodeList().length; i++){
-          paint.style = PaintingStyle.fill;
-          paint.color = Colors.white;
-          canvas.drawCircle(data.allNodeList()[i].canvasPos, 5, paint);
-          paint.style = PaintingStyle.stroke;
+          // paint.style = PaintingStyle.fill;
+          // paint.color = Colors.white;
+          // canvas.drawCircle(data.allNodeList()[i].canvasPos, 5, paint);
+          // paint.style = PaintingStyle.stroke;
           if(data.allNodeList()[i].isSelect){
             paint.color = Colors.red;
           }else{
