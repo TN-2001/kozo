@@ -17,6 +17,7 @@ class _PageGridState extends State<PageGrid> {
   late GlobalKey<ScaffoldState> scaffoldKey;
   late Data data;
   final CanvasData canvasData = CanvasData();
+  static List<String> mathTpeList = ["集中荷重", "分布荷重", "自重"];
   static List<String> devTypeXYList = 
     ["X方向応力","Y方向応力","せん断応力","最大主応力","最小主応力","X方向ひずみ","y方向ひずみ","せん断ひずみ","なし"];
   int toolNum = 0, devTypeNum = 0;
@@ -69,7 +70,17 @@ class _PageGridState extends State<PageGrid> {
                   toolNum = value;
                 });
               }
-            )
+            ),
+            // 荷重タイプ
+            MyMenuDropdown(
+              items: mathTpeList,
+              value: data.powerType,
+              onPressed: (value){
+                setState(() {
+                  data.powerType = value;
+                });
+              },
+            ),
           },
           const Expanded(child: SizedBox()),
           if(!data.isCalculation)...{
@@ -242,12 +253,25 @@ class GridPainter extends CustomPainter {
       }
 
       // 矢印
-      paint.color = const Color.fromARGB(255, 0, 0, 0);
-      paint.style = PaintingStyle.fill;
-      paint.strokeWidth = 3.0;
-      for(int i = 34; i < 37; i++){
-        Offset pos = data.nodeList[i].pos;
-        Painter().arrow(canvasData.dToC(pos), canvasData.dToC(Offset(pos.dx, pos.dy-1.5)), paint, canvas);
+      if(data.powerType == 0){ // 集中荷重
+        paint.color = const Color.fromARGB(255, 0, 0, 0);
+        paint.style = PaintingStyle.fill;
+        paint.strokeWidth = 3.0;
+        for(int i = 34; i < 37; i++){
+          Offset pos = data.nodeList[i].pos;
+          Painter().arrow(canvasData.dToC(pos), canvasData.dToC(Offset(pos.dx, pos.dy-1.5)), paint, canvas);
+        }
+      }else if(data.powerType == 1){ // 分布荷重
+        paint.color = const Color.fromARGB(255, 0, 0, 0);
+        paint.style = PaintingStyle.fill;
+        paint.strokeWidth = 3.0;
+        for(int i = 2; i < 69; i += 3){
+          Offset pos = data.nodeList[i].pos;
+          Painter().arrow(canvasData.dToC(pos), canvasData.dToC(Offset(pos.dx, pos.dy-1.5)), paint, canvas);
+        }
+        Offset pos1 = data.nodeList[2].pos;
+        Offset pos2 = data.nodeList[68].pos;
+        canvas.drawLine(canvasData.dToC(Offset(pos1.dx, pos1.dy-1.5)), canvasData.dToC(Offset(pos2.dx, pos2.dy-1.5)), paint);
       }
     }
     else{
@@ -298,15 +322,6 @@ class GridPainter extends CustomPainter {
             canvas.drawPath(path, paint);
           }
         }
-      }
-
-      // 矢印
-      paint.color = const Color.fromARGB(255, 0, 0, 0);
-      paint.style = PaintingStyle.fill;
-      paint.strokeWidth = 3.0;
-      for(int i = 34; i < 37; i++){
-        Offset pos = data.nodeList[i].afterPos();
-        Painter().arrow(canvasData.dToC(pos), canvasData.dToC(Offset(pos.dx, pos.dy-1.5)), paint, canvas);
       }
 
       // 虹色

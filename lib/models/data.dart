@@ -52,6 +52,7 @@ class Data{
   int type = 0;
   // 選択番号
   int selectedNumber = -1;
+  int powerType = 2; // 荷重条件（橋のとき、0:集中荷重、1:分布荷重、2:自重）
 
   void addNode(){
     // バグ対策
@@ -354,7 +355,7 @@ class Data{
     }
 
     // 解析実行
-    final result = desFEM70x25(zeroOneList);
+    final result = desFEM70x25(zeroOneList, powerType);
 
     // 変位を入手
     for (int n2 = 0; n2 < npx2+1; n2++) {

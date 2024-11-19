@@ -1,19 +1,19 @@
 import 'dart:math';
 
 // 橋の解析
-(List<double>, List<List<List<double>>>, List<List<List<double>>>) desFEM70x25(List<List<int>> zeroOneList) {
-  const int npx1 = 70;
-  const int npx2 = 25;
-  const int nd = 2;
-  const int node = 4;
-  const int nx = (npx1 + 1) * (npx2 + 1);
-  const int neq = nx * nd;
+(List<double>, List<List<List<double>>>, List<List<List<double>>>) desFEM70x25(List<List<int>> zeroOneList, int powerType) {
+  // zeroOneList=要素の有無、powerType=荷重条件（0:集中荷重、1:分布荷重、2:自重）
+  int npx1 = zeroOneList.length; // 横の要素数
+  int npx2 = zeroOneList[0].length; // 縦の要素数
+  const int nd = 2; // 2次元
+  const int node = 4; // 要素節点数
+  int nx = (npx1 + 1) * (npx2 + 1); // 節点数
+  int neq = nx * nd; // 節点数x次元数(xとy方向あるから)
 
-  List<List<int>> mpxl = List.generate(npx1, (_) => List.filled(npx2, 0));
-  // List<List<int>> mpic = List.generate(npx1, (_) => List.filled(npx2, 0));
+  List<List<int>> mpxl = zeroOneList;
   List<List<List<int>>> ijke = List.generate(npx1, (_) => List.generate(npx2, (_) => List.filled(4, 0)));
-  List<int> mdof = List.filled(neq, 0);
-  List<double> fext = List.filled(neq, 0.0);
+  List<int> mdof = List.filled(neq, 0); // 節点拘束（0:拘束、1:拘束でない、荷重がかかっているかは関係ない）
+  List<double> fext = List.filled(neq, 0.0); // 節点荷重
   List<double> disp = List.filled(neq, 0.0);
   List<List<List<double>>> stn = List.generate(npx1, (_) => List.generate(npx2, (_) => List.filled(9, 0.0)));
   List<List<List<double>>> sts = List.generate(npx1, (_) => List.generate(npx2, (_) => List.filled(9, 0.0)));
@@ -22,30 +22,10 @@ import 'dart:math';
   List<double> cgw1 = List.filled(neq, 0.0);
   List<double> cgw2 = List.filled(neq, 0.0);
   List<double> cgw3 = List.filled(neq, 0.0);
-  List<List<String>> cpxl = List.generate(npx1, (_) => List.filled(npx2, ' '));
 
   List<List<double>> ccc = List.generate(3, (_) => List.filled(3, 0.0));
   List<List<double>> bbb = List.generate(3, (_) => List.filled(8, 0.0));
   List<double> ue = List.filled(8, 0.0);
-
-  mpxl = zeroOneList;
-
-  // int nelx = 0;
-  for (int n2 = 0; n2 < npx2; n2++) {
-    for (int n1 = 0; n1 < npx1; n1++) {
-      if (mpxl[n1][n2] == 1) {
-        // nelx++;
-        cpxl[n1][n2] = 'X';
-      } else {
-        cpxl[n1][n2] = ' ';
-      }
-    }
-  }
-
-  // print('\n*) Model -----');
-  // for (int n2 = 0; n2 < npx2; n2++) {
-  //   print(cpxl.map((row) => row[n2]).join(''));
-  // }
 
   for (int n2 = 0; n2 < npx2; n2++) {
     for (int n1 = 0; n1 < npx1; n1++) {
@@ -121,21 +101,43 @@ import 'dart:math';
     }
   }
 
-  // Force vector (p = 1) 外力ベクトルの設定
-  int n1 = (npx1 + 1) * npx2 + (npx1 / 2).round();
-  int n2 = (npx1 + 1) * npx2 + (npx1 / 2).round() + 1;
-  int n3 = (npx1 + 1) * npx2 + (npx1 / 2).round() + 2;
-  fext[nd * n1 - 1] = -1.0;
-  fext[nd * n2 - 1] = -2.0;
-  fext[nd * n3 - 1] = -1.0;
+  // Force vector (p = 1) 外力ベクトル（荷重）の設定
+  if(powerType == 0){ // 集中荷重
+    int n1 = (npx1 + 1) * npx2 + (npx1 / 2).round();
+    int n2 = (npx1 + 1) * npx2 + (npx1 / 2).round() + 1;
+    int n3 = (npx1 + 1) * npx2 + (npx1 / 2).round() + 2;
+    fext[nd * n1 - 1] = -1.0;
+    fext[nd * n2 - 1] = -2.0;
+    fext[nd * n3 - 1] = -1.0;
+  }else if(powerType == 1){ // 分布荷重
+    for (int i = (npx1+1)*npx2+3; i <= (npx1+1)*(npx2+1)-3; i++) {
+      if(i == (npx1+1)*npx2+3 || i == (npx1+1)*(npx2+1)-3){
+        fext[i*nd -1] = -1.0 / (npx1-4);
+      }else{
+        fext[i*nd-1] = -2.0 / (npx1-4);
+      }
+    }
+  }else if(powerType == 2){ // 自重
+    for(int n2 = 0; n2 < npx2; n2++){
+      for(int n1 = 0; n1 < npx1; n1++){
+        if(mpxl[n1][n2] == 1){
+          for(int i = 0; i < 4; i++){
+            int ni = ijke[n1][n2][i];
+            int nj = nd*ni + 1;
+            fext[nj] -= 0.01;
+          }
+        }
+      }
+    }
+  }
 
-  // DOF table (0:fix, 1:free)
+  // DOF table (0:fix, 1:free) 拘束の設定
   for (int i = 0; i < neq; i++) {
     mdof[i] = 1;
   }
-  n1 = (npx1+1)*npx2 + 1;
-  n2 = (npx1+1)*npx2 + 2;
-  n3 = (npx1+1)*npx2 + 3;
+  int n1 = (npx1+1)*npx2 + 1;
+  int n2 = (npx1+1)*npx2 + 2;
+  int n3 = (npx1+1)*npx2 + 3;
   int n4 = (npx1+1)*npx2 + npx1 - 1;
   int n5 = (npx1+1)*npx2 + npx1;
   int n6 = (npx1+1)*npx2 + npx1 + 1;
@@ -238,12 +240,7 @@ import 'dart:math';
         cgw2[i] = cgw1[i] + beta * cgw2[i];
       }
     }
-
-    // Output for checking
-    // print('Iteration $kcg: ${sqrt(rr / r0r0)}');
   }
-
-  // print('CGM completed');
 
   for (int n2 = 0; n2 < npx2; n2++) {
     for (int n1 = 0; n1 < npx1; n1++) {
@@ -310,13 +307,13 @@ import 'dart:math';
       double smin = (sxx + syy) / 2.0 - sqrt(pow((sxx - syy) / 2.0, 2) + pow(txy, 2));
 
       // 保存
-      stn[n1][n2][0] = exx; // X方向の正規ひずみ
-      stn[n1][n2][1] = eyy; // y方向の正規ひずみ
-      stn[n1][n2][2] = rxy; // XY方向のせん断ひずみ
+      stn[n1][n2][0] = exx; // X方向ひずみ
+      stn[n1][n2][1] = eyy; // y方向ひずみ
+      stn[n1][n2][2] = rxy; // せん断ひずみ
 
-      sts[n1][n2][0] = sxx; // X方向の正規応力
-      sts[n1][n2][1] = syy; // y方向の正規応力
-      sts[n1][n2][2] = txy; // XY方向のせん断応力
+      sts[n1][n2][0] = sxx; // X方向応力
+      sts[n1][n2][1] = syy; // y方向応力
+      sts[n1][n2][2] = txy; // せん断応力
       sts[n1][n2][3] = smax; // 最大主応力
       sts[n1][n2][4] = smin; // 最小主応力
     }
