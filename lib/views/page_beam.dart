@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:kozo/components/painter.dart';
 import 'package:kozo/components/widgets.dart';
+import 'package:kozo/models/canvas_data.dart';
 import 'package:kozo/models/data.dart';
 
 class PageBeam extends StatefulWidget {
@@ -126,17 +127,19 @@ class _PageBeamState extends State<PageBeam> {
           // メインビュー
           MyCustomPaint(
             onTap: (position) {
-              setState(() {
-                if(toolNum == 1){
-                  if(toolTypeNum == 0){
-                    data.selectNode(position);
+              if(!data.isCalculation){
+                setState(() {
+                  if(toolNum == 1){
+                    if(toolTypeNum == 0){
+                      data.selectNode(position);
+                    }
+                    else if(toolTypeNum == 1){
+                      data.selectElem(position, 0);
+                    }
                   }
-                  else if(toolTypeNum == 1){
-                    data.selectElem(position, 0);
-                  }
-                }
-                data.selectedNumber = data.selectedNumber;
-              });
+                  data.selectedNumber = data.selectedNumber;
+                });
+              }
             },
             painter: BeamPainter(data: data, devTypeNum: devTypeNum),
           ),
@@ -393,177 +396,18 @@ class BeamPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     Rect dataRect = data.rect();
-    data.updateCanvasPos(Rect.fromLTRB(100+size.width/10, 100+size.height/10, size.width-100-size.width/10, size.height-100-size.height/10), 1);
+    data.updateCanvasPos(Rect.fromLTRB(250, 100+size.height/10, size.width-150, size.height-100-size.height/10), 1);
     List<Node> nodes = data.allNodeList();
     List<Elem> elems = data.allElemList();
 
     Paint paint = Paint();
 
     if(!data.isCalculation){
-      // 辺
-      paint = Paint()
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 10;
-      if(elems.isNotEmpty){
-        for(int i = 0; i < elems.length; i++){
-          if(elems[i].nodeList[0] != null && elems[i].nodeList[1] != null){
-            if(elems[i].isSelect){
-              paint.color = Colors.red;
-              canvas.drawLine(elems[i].nodeList[0]!.canvasPos, elems[i].nodeList[1]!.canvasPos, paint);
-            }else{
-              paint.color = const Color.fromARGB(255, 86, 86, 86);
-              canvas.drawLine(elems[i].nodeList[0]!.canvasPos, elems[i].nodeList[1]!.canvasPos, paint);
-            }
-          }
-        }
-      }
-
-      // 節点拘束
-      paint = Paint()
-        ..color = const Color.fromARGB(255, 0, 0, 0)
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 2;
-
-      if(nodes.isNotEmpty){
-        for(int i = 0; i < nodes.length; i++){
-          paint.style = PaintingStyle.fill;
-          if(nodes[i].constXYR[0] && nodes[i].constXYR[1] && nodes[i].constXYR[2]){ // 壁
-            if(nodes[i].pos.dx < dataRect.center.dx){
-              Offset cpos = nodes[i].canvasPos;
-              paint.color = const Color.fromARGB(255, 141, 141, 141);
-              canvas.drawRect(Rect.fromLTRB(cpos.dx-50, size.height/2-100, cpos.dx, size.height/2+100), paint);
-              paint.color = Colors.black;
-              canvas.drawLine(Offset(cpos.dx, size.height/2-100), Offset(cpos.dx, size.height/2+100), paint);
-            }
-            else{
-              Offset cpos = nodes[i].canvasPos;
-              paint.color = const Color.fromARGB(255, 141, 141, 141);
-              canvas.drawRect(Rect.fromLTRB(cpos.dx, size.height/2-100, cpos.dx+50, size.height/2+100), paint);
-              paint.color = Colors.black;
-              canvas.drawLine(Offset(cpos.dx, size.height/2-100), Offset(cpos.dx, size.height/2+100), paint);
-              break;
-            }
-          }
-          else if(nodes[i].constXYR[1]){
-            Offset cpos = nodes[i].canvasPos;
-            paint.style = PaintingStyle.stroke;
-            Path path = Path();
-            path.moveTo(cpos.dx, cpos.dy+5);
-            path.lineTo(cpos.dx-10, cpos.dy+25);
-            path.lineTo(cpos.dx+10, cpos.dy+25);
-            path.close();
-            canvas.drawPath(path, paint);
-
-            if(!nodes[i].constXYR[0]){
-              canvas.drawLine(Offset(cpos.dx-10, cpos.dy+30), Offset(cpos.dx+10, cpos.dy+30), paint);
-            }
-          }
-          canvas.drawCircle(nodes[i].canvasPos, 5, paint);
-        }
-      }
-
-      // 荷重
-      paint = Paint()
-        ..color = const Color.fromARGB(255, 0, 0, 0)
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 3;
-      
-      if(nodes.isNotEmpty){
-        for(int i = 0; i < nodes.length; i++){
-          Offset pos = nodes[i].canvasPos;
-          if(nodes[i].loadXY[1] != 0){
-            if(nodes[i].loadXY[1] < 0){
-              Painter().arrow(Offset(pos.dx, pos.dy-75), Offset(pos.dx, pos.dy-5), 5, canvas);
-            }else{
-              Painter().arrow(Offset(pos.dx, pos.dy+75), Offset(pos.dx, pos.dy+5), 5, canvas);
-            }
-          }
-
-          if(nodes[i].loadXY[2] != 0.0){ // 曲げモーメント
-            paint.style = PaintingStyle.stroke;
-            canvas.drawCircle(pos, 40, paint);
-            paint.style = PaintingStyle.fill;
-            if(nodes[i].loadXY[2] > 0){
-              Painter().arrow(Offset(pos.dx, pos.dy-40), Offset(pos.dx-13, pos.dy-40), 5, canvas);
-              Painter().arrow(Offset(pos.dx, pos.dy+40), Offset(pos.dx+13, pos.dy+40), 5, canvas);
-            }else{
-              Painter().arrow(Offset(pos.dx, pos.dy-40), Offset(pos.dx+13, pos.dy-40), 5, canvas);
-              Painter().arrow(Offset(pos.dx, pos.dy+40), Offset(pos.dx-13, pos.dy+40), 5, canvas);
-            }
-          }
-        }
-      }
-
-      if(elems.isNotEmpty){
-        for(int i = 0; i < elems.length; i++){
-          if(elems[i].nodeList[0] != null && elems[i].nodeList[1] != null && elems[i].load != 0.0){
-            double left = 0.0;
-            double right = 0.0;
-            if(elems[i].nodeList[0]!.pos.dx > elems[i].nodeList[1]!.pos.dx){
-              left = elems[i].nodeList[1]!.pos.dx;
-              right = elems[i].nodeList[0]!.pos.dx;
-            }else{
-              left = elems[i].nodeList[0]!.pos.dx;
-              right = elems[i].nodeList[1]!.pos.dx;
-            }
-            double width = right-left;
-            int count = (width/(dataRect.width/10)).toInt();
-            for(int j = 0; j <= count; j++){
-              Offset cpos = data.canvasData.dToC(Offset(left+width/count*j, 0));
-              if(elems[i].load < 0){
-                Painter().arrow(Offset(cpos.dx, cpos.dy-50), Offset(cpos.dx, cpos.dy-5), 3, canvas);
-              }
-              else{
-                Painter().arrow(Offset(cpos.dx, cpos.dy+50), Offset(cpos.dx, cpos.dy+5), 3, canvas);
-              }
-            }
-            Offset cleftPos = data.canvasData.dToC(Offset(left, 0));
-            Offset cRightPos = data.canvasData.dToC(Offset(right, 0));
-            if(elems[i].load < 0){
-              canvas.drawLine(Offset(cleftPos.dx, cleftPos.dy-50), Offset(cRightPos.dx, cRightPos.dy-50), paint);
-            }else{
-              canvas.drawLine(Offset(cleftPos.dx, cleftPos.dy+50), Offset(cRightPos.dx, cRightPos.dy+50), paint);
-            }
-          }
-        }
-      }
-
-      // 節点
-      paint = Paint()
-        ..strokeWidth = 2;
-
-      if(nodes.isNotEmpty){
-        for(int i = 0; i < nodes.length; i++){
-          paint.style = PaintingStyle.fill;
-          if(nodes[i].constXYR[3]){ // ヒンジ
-            paint.color = Colors.white;
-          }
-          else{
-            paint.color = const Color.fromARGB(255, 79, 79, 79);
-          }
-          canvas.drawCircle(nodes[i].canvasPos, 7.5, paint);
-
-          paint.style = PaintingStyle.stroke;
-          if(nodes[i].isSelect){
-            paint.color = Colors.red;
-          }else{
-            paint.color = const Color.fromARGB(255, 50, 50, 50);
-          }
-          canvas.drawCircle(nodes[i].canvasPos, 7.5, paint);
-        }
-      }
-
-      // 節点番号
-      if(nodes.isNotEmpty){
-        for(int i = 0; i < nodes.length; i++){
-          Offset pos = nodes[i].canvasPos;
-          if(nodes[i].isSelect){
-            Painter().text(canvas, size.width, (i+1).toString(), Offset(pos.dx - 30, pos.dy - 30), 20, Colors.red);
-          }else{
-            Painter().text(canvas, size.width, (i+1).toString(), Offset(pos.dx - 30, pos.dy - 30), 20, Colors.black);
-          }
-        }
-      }
+      drawElem(elems, true, canvas); // 辺
+      drawConst(nodes, dataRect, canvas, size); // 節点拘束
+      drawPower(nodes, elems, dataRect, data.canvasData, canvas); // 荷重
+      drawNode(nodes, true, canvas); // 節点
+      drawNodeNumber(nodes, true, canvas, size); // 節点番号
     }
     else{
       // 結果
@@ -593,20 +437,8 @@ class BeamPainter extends CustomPainter {
         }
 
         for(int i = 0; i < data.resultElemList.length; i++){
-          double topLeftY = 0;
-          double topRightY = 0;
-          if(i == 0){
-            topLeftY = sList[i] + (sList[i]-sList[i+1]) / 2;
-          }else{
-            topLeftY = sList[i] + (sList[i-1]-sList[i]) / 2;
-          }
-          if(i == data.resultElemList.length-1){
-            topRightY = sList[i] + (sList[i]-sList[i-1]) / 2;
-          }else{
-            topRightY = sList[i] + (sList[i+1]-sList[i]) / 2;
-          }
-          Offset topLeft = data.canvasData.dToC(Offset(data.resultElemList[i].nodeList[0]!.afterPos.dx, topLeftY));
-          Offset topRight = data.canvasData.dToC(Offset(data.resultElemList[i].nodeList[1]!.afterPos.dx, topRightY));
+          Offset topLeft = data.canvasData.dToC(Offset(data.resultElemList[i].nodeList[0]!.afterPos.dx, sList[i]));
+          Offset topRight = data.canvasData.dToC(Offset(data.resultElemList[i].nodeList[1]!.afterPos.dx, sList[i]));
           Offset bottomRight = data.canvasData.dToC(Offset(data.resultElemList[i].nodeList[1]!.afterPos.dx, 0));
           paint.color = const Color.fromARGB(255, 153, 194, 228);
           Path path = Path();
@@ -671,12 +503,14 @@ class BeamPainter extends CustomPainter {
 
         drawm(max, min, scale, true, canvas, size);
       }
-      else{
+
+      drawElem(data.elemList, false, canvas); // 辺
+
+      if(devTypeNum > 1) {
         paint = Paint()
-          ..color = const Color.fromARGB(255, 255, 13, 13)
+          ..color = const Color.fromARGB(255, 225, 135, 135)
           ..style = PaintingStyle.fill
           ..strokeWidth = 10;
-        
         double max = data.resultNodeList[0].becPos.dy;
         double min = data.resultNodeList[0].becPos.dy;
         for(int i = 1; i < data.resultNodeList.length; i++){
@@ -696,8 +530,17 @@ class BeamPainter extends CustomPainter {
         for(int i = 0; i < data.resultElemList.length; i++){
           canvas.drawLine(data.canvasData.dToC(data.resultElemList[i].nodeList[0]!.afterPos), data.canvasData.dToC(data.resultElemList[i].nodeList[1]!.afterPos), paint);
         }
+      }
 
+      
+      drawConst(data.nodeList, dataRect, canvas, size); // 節点拘束
+      drawPower(data.nodeList, data.elemList, dataRect, data.canvasData, canvas); // 荷重
+      drawNode(data.nodeList, false, canvas); // 節点
 
+      if(devTypeNum > 1) {
+        paint = Paint()
+          ..style = PaintingStyle.fill
+          ..strokeWidth = 2;
         List<Node> leftNodes = [];
         for(int i = 0; i < data.nodeList.length; i++){
           leftNodes.add(data.nodeList[i]);
@@ -705,7 +548,16 @@ class BeamPainter extends CustomPainter {
         leftNodes.sort((a, b) => a.pos.dx.compareTo(b.pos.dx));
         for(int i = 0; i < data.nodeList.length; i++){
           Offset cpos = data.canvasData.dToC(data.resultNodeList[i].afterPos);
-          canvas.drawCircle(cpos, 7.5, paint);
+          paint.style = PaintingStyle.fill;
+          if(data.nodeList[i].constXYR[3]){
+            paint.color = const Color.fromARGB(255, 255, 255, 255);
+          }else{
+            paint.color = const Color.fromARGB(255, 79, 79, 79);
+          }
+          canvas.drawCircle(cpos, 9.0, paint);
+          paint.style = PaintingStyle.stroke;
+          paint.color = const Color.fromARGB(255, 0, 0, 0);
+          canvas.drawCircle(cpos, 9.0, paint);
           if(devTypeNum == 2){
             Painter().text(canvas, size.width, "v=${data.resultNodeList[i].result[0].toStringAsFixed(5)}", cpos, 20, Colors.black);
           }else{
@@ -725,75 +577,187 @@ class BeamPainter extends CustomPainter {
         }
       }
 
-      // 辺
-      paint = Paint()
-        ..color = const Color.fromARGB(255, 86, 86, 86)
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 10;
-      for(int i = 0; i < data.elemList.length; i++){
-        if(data.elemList[i].nodeList[0] != null && data.elemList[i].nodeList[1] != null){
-          canvas.drawLine(data.elemList[i].nodeList[0]!.canvasPos, elems[i].nodeList[1]!.canvasPos, paint);
-        }
-      }
+      drawNodeNumber(data.nodeList, false, canvas, size); // 節点番号
+    }
+  }
 
-      // 節点拘束
-      paint = Paint()
-        ..color = const Color.fromARGB(255, 0, 0, 0)
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 2;
+  // 節点
+  void drawNode(List<Node> nodes, bool isSelect, Canvas canvas) {
+    Paint paint = Paint()
+      ..strokeWidth = 2;
 
-      for(int i = 0; i < data.nodeList.length; i++){
+    if(nodes.isNotEmpty){
+      for(int i = 0; i < nodes.length; i++){
         paint.style = PaintingStyle.fill;
-        if(data.nodeList[i].constXYR[0] && data.nodeList[i].constXYR[1] && data.nodeList[i].constXYR[2]){ // 壁
-          if(data.nodeList[i].pos.dx < dataRect.center.dx){
-            Offset cpos = data.nodeList[i].canvasPos;
-            paint.color = const Color.fromARGB(255, 141, 141, 141);
-            canvas.drawRect(Rect.fromLTRB(cpos.dx-50, size.height/2-100, cpos.dx, size.height/2+100), paint);
-            paint.color = Colors.black;
-            canvas.drawLine(Offset(cpos.dx, size.height/2-100), Offset(cpos.dx, size.height/2+100), paint);
-          }
-          else{
-            Offset cpos = data.nodeList[i].canvasPos;
-            paint.color = const Color.fromARGB(255, 141, 141, 141);
-            canvas.drawRect(Rect.fromLTRB(cpos.dx, size.height/2-100, cpos.dx+50, size.height/2+100), paint);
-            paint.color = Colors.black;
-            canvas.drawLine(Offset(cpos.dx, size.height/2-100), Offset(cpos.dx, size.height/2+100), paint);
-            break;
-          }
-        }
-      }
-
-      // 節点
-      paint = Paint()
-        ..strokeWidth = 2;
-
-      for(int i = 0; i < data.nodeList.length; i++){
-        paint.style = PaintingStyle.fill;
-        if(data.nodeList[i].constXYR[3]){ // ヒンジ
+        if(nodes[i].constXYR[3]){ // ヒンジ
           paint.color = Colors.white;
         }
         else{
           paint.color = const Color.fromARGB(255, 79, 79, 79);
         }
-        canvas.drawCircle(data.nodeList[i].canvasPos, 7.5, paint);
+        canvas.drawCircle(nodes[i].canvasPos, 9.0, paint);
 
         paint.style = PaintingStyle.stroke;
-        paint.color = const Color.fromARGB(255, 50, 50, 50);
-        canvas.drawCircle(data.nodeList[i].canvasPos, 7.5, paint);
+        if(nodes[i].isSelect && isSelect){
+          paint.color = Colors.red;
+        }else{
+          paint.color = const Color.fromARGB(255, 0, 0, 0);
+        }
+        canvas.drawCircle(nodes[i].canvasPos, 9.0, paint);
       }
+    }
+  }
 
-      // 節点番号
-      for(int i = 0; i < data.nodeList.length; i++){
-        Offset pos = data.nodeList[i].canvasPos;
-        Painter().text(canvas, size.width, (i+1).toString(), Offset(pos.dx - 30, pos.dy - 30), 20, Colors.black);
+  // 節点番号
+  void drawNodeNumber(List<Node> nodes, bool isSelect, Canvas canvas, Size size) {
+    if(nodes.isNotEmpty){
+      for(int i = 0; i < nodes.length; i++){
+        Offset pos = nodes[i].canvasPos;
+        if(nodes[i].isSelect && isSelect){
+          Painter().text(canvas, size.width, (i+1).toString(), Offset(pos.dx - 30, pos.dy - 30), 20, Colors.red);
+        }else{
+          Painter().text(canvas, size.width, (i+1).toString(), Offset(pos.dx - 30, pos.dy - 30), 20, Colors.black);
+        }
       }
+    }
+  }
 
-      
+  // 要素
+  void drawElem(List<Elem> elems, bool isSelect, Canvas canvas) {
+    Paint paint = Paint()
+      ..color = const Color.fromARGB(255, 99, 99, 99)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 10;
+    if(elems.isNotEmpty){
+      for(int i = 0; i < elems.length; i++){
+        if(elems[i].nodeList[0] != null && elems[i].nodeList[1] != null){
+          if(isSelect){
+            if(elems[i].isSelect){
+              paint.color = Colors.red;
+            }else{
+              paint.color = const Color.fromARGB(255, 86, 86, 86);
+            }
+          }
+          canvas.drawLine(elems[i].nodeList[0]!.canvasPos, elems[i].nodeList[1]!.canvasPos, paint);
+        }
+      }
+    }
+  }
+
+  // 拘束
+  void drawConst(List<Node> nodes, Rect dataRect, Canvas canvas, Size size) {
+    Paint paint = Paint()
+      ..color = const Color.fromARGB(255, 0, 0, 0)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2;
+
+    if(nodes.isNotEmpty){
+      for(int i = 0; i < nodes.length; i++){
+        paint.style = PaintingStyle.fill;
+        if(nodes[i].constXYR[0] && nodes[i].constXYR[1] && nodes[i].constXYR[2]){ // 壁
+          if(nodes[i].pos.dx < dataRect.center.dx){
+            Offset cpos = nodes[i].canvasPos;
+            paint.color = const Color.fromARGB(255, 181, 181, 181);
+            canvas.drawRect(Rect.fromLTRB(cpos.dx-50, size.height/2-100, cpos.dx, size.height/2+100), paint);
+            paint.color = Colors.black;
+            canvas.drawLine(Offset(cpos.dx, size.height/2-100), Offset(cpos.dx, size.height/2+100), paint);
+          }
+          else{
+            Offset cpos = nodes[i].canvasPos;
+            paint.color = const Color.fromARGB(255, 181, 181, 181);
+            canvas.drawRect(Rect.fromLTRB(cpos.dx, size.height/2-100, cpos.dx+50, size.height/2+100), paint);
+            paint.color = Colors.black;
+            canvas.drawLine(Offset(cpos.dx, size.height/2-100), Offset(cpos.dx, size.height/2+100), paint);
+            break;
+          }
+        }else if(nodes[i].constXYR[1]){ // 三角
+          Offset cpos = nodes[i].canvasPos;
+          paint.style = PaintingStyle.stroke;
+          Path path = Path();
+          path.moveTo(cpos.dx, cpos.dy+5);
+          path.lineTo(cpos.dx-10, cpos.dy+25);
+          path.lineTo(cpos.dx+10, cpos.dy+25);
+          path.close();
+          canvas.drawPath(path, paint);
+
+          if(!nodes[i].constXYR[0]){ // 下線
+            canvas.drawLine(Offset(cpos.dx-20, cpos.dy+30), Offset(cpos.dx+20, cpos.dy+30), paint);
+          }
+        }
+        canvas.drawCircle(nodes[i].canvasPos, 5, paint);
+      }
+    }
+  }
+
+  // 荷重
+  void drawPower(List<Node> nodes, List<Elem> elems, Rect dataRect, CanvasData canvasData, Canvas canvas) {
+    Paint paint = Paint()
+      ..color = const Color.fromARGB(255, 0, 0, 0)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 3;
+    
+    if(nodes.isNotEmpty){
+      for(int i = 0; i < nodes.length; i++){
+        Offset pos = nodes[i].canvasPos;
+        if(nodes[i].loadXY[1] != 0){ // 集中荷重
+          if(nodes[i].loadXY[1] < 0){
+            Painter().arrow(Offset(pos.dx, pos.dy-75), Offset(pos.dx, pos.dy-5), 5, const Color.fromARGB(255, 0, 63, 95), canvas);
+          }else{
+            Painter().arrow(Offset(pos.dx, pos.dy+75), Offset(pos.dx, pos.dy+5), 5, const Color.fromARGB(255, 0, 63, 95), canvas);
+          }
+        }
+
+        if(nodes[i].loadXY[2] != 0.0){ // 曲げモーメント
+          paint.style = PaintingStyle.stroke;
+          canvas.drawCircle(pos, 40, paint);
+          paint.style = PaintingStyle.fill;
+          if(nodes[i].loadXY[2] > 0){
+            Painter().arrow(Offset(pos.dx, pos.dy-40), Offset(pos.dx-13, pos.dy-40), 5, const Color.fromARGB(255, 0, 63, 95), canvas);
+            Painter().arrow(Offset(pos.dx, pos.dy+40), Offset(pos.dx+13, pos.dy+40), 5, const Color.fromARGB(255, 0, 63, 95), canvas);
+          }else{
+            Painter().arrow(Offset(pos.dx, pos.dy-40), Offset(pos.dx+13, pos.dy-40), 5, const Color.fromARGB(255, 0, 63, 95), canvas);
+            Painter().arrow(Offset(pos.dx, pos.dy+40), Offset(pos.dx-13, pos.dy+40), 5, const Color.fromARGB(255, 0, 63, 95), canvas);
+          }
+        }
+      }
+    }
+
+    if(elems.isNotEmpty) {
+      for(int i = 0; i < elems.length; i++){
+        if(elems[i].nodeList[0] != null && elems[i].nodeList[1] != null && elems[i].load != 0.0){
+          double left = 0.0;
+          double right = 0.0;
+          if(elems[i].nodeList[0]!.pos.dx > elems[i].nodeList[1]!.pos.dx){
+            left = elems[i].nodeList[1]!.pos.dx;
+            right = elems[i].nodeList[0]!.pos.dx;
+          }else{
+            left = elems[i].nodeList[0]!.pos.dx;
+            right = elems[i].nodeList[1]!.pos.dx;
+          }
+          double width = right-left;
+          int count = (width/(dataRect.width/10)).toInt();
+          for(int j = 0; j <= count; j++){
+            Offset cpos = canvasData.dToC(Offset(left+width/count*j, 0));
+            if(elems[i].load < 0){
+              Painter().arrow(Offset(cpos.dx, cpos.dy-50), Offset(cpos.dx, cpos.dy-5), 3, const Color.fromARGB(255, 0, 63, 95), canvas);
+            }
+            else{
+              Painter().arrow(Offset(cpos.dx, cpos.dy+50), Offset(cpos.dx, cpos.dy+5), 3, const Color.fromARGB(255, 0, 63, 95), canvas);
+            }
+          }
+          Offset cleftPos = canvasData.dToC(Offset(left, 0));
+          Offset cRightPos = canvasData.dToC(Offset(right, 0));
+          if(elems[i].load < 0){
+            canvas.drawLine(Offset(cleftPos.dx, cleftPos.dy-48.5), Offset(cRightPos.dx, cRightPos.dy-48.5), paint);
+          }else{
+            canvas.drawLine(Offset(cleftPos.dx, cleftPos.dy+48.5), Offset(cRightPos.dx, cRightPos.dy+48.5), paint);
+          }
+        }
+      }
     }
   }
 
   // メモリ
-
   void drawm(double max, double min, double scale, bool reverse, Canvas canvas, Size size) {
     Paint paint = Paint()
       ..color = Colors.black
@@ -841,19 +805,20 @@ class BeamPainter extends CustomPainter {
     canvas.drawLine(Offset(80, top.dy), Offset(80, bottom.dy), paint);
 
     for (double value = -maxAbs; value <= maxAbs; value += nextValue) {
-      if (value.abs() <= maxAbs) {
-        top = data.canvasData.dToC(Offset(0, value * scale));
-        canvas.drawLine(Offset(70, top.dy), Offset(90, top.dy), paint);
-        String label = "";
-        if(maxAbs >= 10){
-          label = reverse ? (-value).toStringAsFixed(0) : value.toStringAsFixed(0);
-        }else if(maxAbs >= 0.1){
-          label = reverse ? (-value).toStringAsFixed(2) : value.toStringAsFixed(2);
-        }else{
-          label = reverse ? (-value).toStringAsExponential(1) : value.toStringAsExponential(1);
-        }
-        Painter().text(canvas, size.width, label, Offset(100, top.dy - 15), 20, Colors.black);
+      if(value.abs() < 1/(digitScale*10000)){
+        value = 0.0;
       }
+      top = data.canvasData.dToC(Offset(0, value * scale));
+      canvas.drawLine(Offset(70, top.dy), Offset(90, top.dy), paint);
+      String label = "";
+      if(maxAbs >= 10){
+        label = reverse ? (-value).toStringAsFixed(0) : value.toStringAsFixed(0);
+      }else if(maxAbs >= 0.1){
+        label = reverse ? (-value).toStringAsFixed(2) : value.toStringAsFixed(2);
+      }else{
+        label = reverse ? (-value).toStringAsExponential(1) : value.toStringAsExponential(1);
+      }
+      Painter().text(canvas, size.width, label, Offset(100, top.dy - 15), 20, Colors.black);
     }
   }
 

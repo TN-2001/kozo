@@ -253,7 +253,7 @@ class GridPainter extends CustomPainter {
         paint.strokeWidth = 3.0;
         for(int i = 34; i < 37; i++){
           Offset pos = data.nodeList[i].canvasPos;
-          Painter().arrow(pos, Offset(pos.dx, pos.dy+data.canvasData.scale*1.5), 3, canvas);
+          Painter().arrow(pos, Offset(pos.dx, pos.dy+data.canvasData.scale*1.5), 3, const Color.fromARGB(255, 0, 63, 95), canvas);
         }
       }else if(data.powerType == 1){ // 分布荷重
         paint.color = const Color.fromARGB(255, 0, 0, 0);
@@ -261,7 +261,7 @@ class GridPainter extends CustomPainter {
         paint.strokeWidth = 3.0;
         for(int i = 2; i < 69; i += 3){
           Offset pos = data.nodeList[i].canvasPos;
-          Painter().arrow(pos, Offset(pos.dx, pos.dy+data.canvasData.scale*1.5), 3, canvas);
+          Painter().arrow(pos, Offset(pos.dx, pos.dy+data.canvasData.scale*1.5), 3, const Color.fromARGB(255, 0, 63, 95), canvas);
         }
         Offset pos1 = data.nodeList[2].canvasPos;
         Offset pos2 = data.nodeList[68].canvasPos;

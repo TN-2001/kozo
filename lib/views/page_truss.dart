@@ -440,16 +440,16 @@ class TrussPainter extends CustomPainter {
           Offset pos = nodes[i].canvasPos;
           if(nodes[i].loadXY[0] != 0){
             if(nodes[i].loadXY[0] > 0){
-              Painter().arrow(Offset(pos.dx+5, pos.dy), Offset(pos.dx+30, pos.dy), 3, canvas);
+              Painter().arrow(Offset(pos.dx+5, pos.dy), Offset(pos.dx+30, pos.dy), 3, const Color.fromARGB(255, 0, 63, 95), canvas);
             }else{
-              Painter().arrow(Offset(pos.dx-5, pos.dy), Offset(pos.dx-30, pos.dy), 3, canvas);
+              Painter().arrow(Offset(pos.dx-5, pos.dy), Offset(pos.dx-30, pos.dy), 3, const Color.fromARGB(255, 0, 63, 95), canvas);
             }
           }
           if(nodes[i].loadXY[1] != 0){
             if(nodes[i].loadXY[1] > 0){
-              Painter().arrow(Offset(pos.dx, pos.dy-5), Offset(pos.dx, pos.dy-30), 3, canvas);
+              Painter().arrow(Offset(pos.dx, pos.dy-5), Offset(pos.dx, pos.dy-30), 3, const Color.fromARGB(255, 0, 63, 95), canvas);
             }else{
-              Painter().arrow(Offset(pos.dx, pos.dy+5), Offset(pos.dx, pos.dy+30), 3, canvas);
+              Painter().arrow(Offset(pos.dx, pos.dy+5), Offset(pos.dx, pos.dy+30), 3, const Color.fromARGB(255, 0, 63, 95), canvas);
             }
           }
         }

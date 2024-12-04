@@ -3,8 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:kozo/utils/calculator.dart';
 
 class Painter{
-  void arrow(Offset start, end, double width, Canvas canvas){
+  void arrow(Offset start, end, double width, Color color, Canvas canvas){
     Paint p = Paint()
+      ..color = color
       ..style = PaintingStyle.fill
       ..strokeWidth = 2 * width;
 
