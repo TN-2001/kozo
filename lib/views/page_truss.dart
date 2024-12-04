@@ -13,8 +13,8 @@ class PageTruss extends StatefulWidget {
 }
 
 class _PageTrussState extends State<PageTruss> {
-  late GlobalKey<ScaffoldState> scaffoldKey;
-  late Data data;
+  late GlobalKey<ScaffoldState> scaffoldKey; // メニュー用キー
+  late Data data; // データ
   List<String> devTypes = ["応力","ひずみ"];
   int toolTypeNum = 0, toolNum = 0, devTypeNum = 0;
 
@@ -91,7 +91,7 @@ class _PageTrussState extends State<PageTruss> {
               icon: Icons.play_arrow,
               onPressed: (){
                 setState(() {
-                  data.calculationTruss();
+                  data.calculation(1);
                 });
               },
             ),
@@ -103,7 +103,11 @@ class _PageTrussState extends State<PageTruss> {
               onPressed: (value){
                 setState(() {
                   devTypeNum = value;
-                  data.selectResult(value);
+                  if(value == 0){
+                    data.selectResult(0);
+                  }else{
+                    data.selectResult(5);
+                  }
                 });
               },
             ),
@@ -125,19 +129,21 @@ class _PageTrussState extends State<PageTruss> {
           // メインビュー
           MyCustomPaint(
             onTap: (position) {
-              setState(() {
-                if(toolNum == 1){
-                  if(toolTypeNum == 0){
-                    data.selectNode(position);
+              if(!data.isCalculation){
+                setState(() {
+                  if(toolNum == 1){
+                    if(toolTypeNum == 0){
+                      data.selectNode(position);
+                    }
+                    else if(toolTypeNum == 1){
+                      data.selectElem(position,0);
+                    }
                   }
-                  else if(toolTypeNum == 1){
-                    data.selectElem(position);
-                  }
-                }
-                data.selectedNumber = data.selectedNumber;
-              });
+                  data.selectedNumber = data.selectedNumber;
+                });
+              }
             },
-            painter: TrussPainter(data: data,),
+            painter: TrussPainter(data: data),
           ),
           if(!data.isCalculation)...{
             if(toolTypeNum == 0)...{
@@ -198,19 +204,19 @@ class _PageTrussState extends State<PageTruss> {
           children: [
             MySettingCheckbox(
               name: "x", 
-              value: node.constXY[0], 
+              value: node.constXYR[0], 
               onChanged: (value){
                 setState(() {
-                  node.constXY[0] = value;
+                  node.constXYR[0] = value;
                 });
               }
             ),
             MySettingCheckbox(
               name: "y", 
-              value: node.constXY[1],
+              value: node.constXYR[1],
               onChanged: (value){
                 setState(() {
-                  node.constXY[1] = value;
+                  node.constXYR[1] = value;
                 });
               }
             ),
@@ -281,22 +287,22 @@ class _PageTrussState extends State<PageTruss> {
           children: [
             MySettingTextField(
               name: "a", 
-              text: (elem.nodes[0] != null) ? (elem.nodes[0]!.number+1).toString() : "", 
+              text: (elem.nodeList[0] != null) ? (elem.nodeList[0]!.number+1).toString() : "", 
               onChanged: (value){
                 if(int.tryParse(value) != null){
                   if(int.parse(value)-1 < data.nodeList.length){
-                    elem.nodes[0] = data.nodeList[int.parse(value)-1];
+                    elem.nodeList[0] = data.nodeList[int.parse(value)-1];
                   }
                 }
               }
             ),
             MySettingTextField(
               name: "b", 
-              text: (elem.nodes[1] != null) ? (elem.nodes[1]!.number+1).toString() : "",
+              text: (elem.nodeList[1] != null) ? (elem.nodeList[1]!.number+1).toString() : "",
               onChanged: (value){
                 if(double.tryParse(value) != null){
                   if(int.parse(value)-1 < data.nodeList.length){
-                    elem.nodes[1] = data.nodeList[int.parse(value)-1];
+                    elem.nodeList[1] = data.nodeList[int.parse(value)-1];
                   }
                 }
               }
@@ -367,21 +373,23 @@ class TrussPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    data.updateCanvasPos(const Offset(100, 0), Offset(size.width-100, size.height-100));
+    data.updateCanvasPos(Rect.fromLTRB(100+size.width/10, 100+size.height/10, size.width-100-size.width/10, size.height-100-size.height/10), 1);
+    List<Node> nodes = data.allNodeList();
+    List<Elem> elems = data.allElemList();
 
     Paint paint = Paint();
 
     if(!data.isCalculation){
       // 辺
-      if(data.allElemList().isNotEmpty){
-        for(int i = 0; i < data.allElemList().length; i++){
-          if(data.allElemList()[i].nodes[0] != null && data.allElemList()[i].nodes[1] != null){
-            if(data.allElemList()[i].isSelect){
-              Painter().angleRectangle(canvas, data.allElemList()[i].nodes[0]!.canvasPos, 
-                data.allElemList()[i].nodes[1]!.canvasPos, size.height/20, Colors.red, false);
+      if(elems.isNotEmpty){
+        for(int i = 0; i < elems.length; i++){
+          if(elems[i].nodeList[0] != null && elems[i].nodeList[1] != null){
+            Offset p0 = elems[i].nodeList[0]!.canvasPos;
+            Offset p1 = elems[i].nodeList[1]!.canvasPos;
+            if(elems[i].isSelect){
+              Painter().angleRectangle(canvas, p0, p1, data.canvasData.percentToCWidth(5), Colors.red, false);
             }else{
-              Painter().angleRectangle(canvas, data.allElemList()[i].nodes[0]!.canvasPos, 
-                data.allElemList()[i].nodes[1]!.canvasPos, size.height/20, const Color.fromARGB(255, 49, 49, 49), false);
+              Painter().angleRectangle(canvas, p0, p1, data.canvasData.percentToCWidth(5), const Color.fromARGB(255, 49, 49, 49), false);
             }
           }
         }
@@ -393,36 +401,27 @@ class TrussPainter extends CustomPainter {
         ..style = PaintingStyle.stroke
         ..strokeWidth = 2;
 
-      if(data.allNodeList().isNotEmpty){
-        for(int i = 0; i < data.allNodeList().length; i++){
-          if(data.allNodeList()[i].isSelect){
+      if(nodes.isNotEmpty){
+        for(int i = 0; i < nodes.length; i++){
+          if(nodes[i].isSelect){
             paint.color = Colors.red;
           }else{
             paint.color = Colors.black;
           }
-          // Offset pos = data.allNodeList()[i].canvasPos;
           paint.style = PaintingStyle.fill;
-          if(data.allNodeList()[i].constXY[0] && data.allNodeList()[i].constXY[1]){
+          if(nodes[i].constXYR[0] && nodes[i].constXYR[1]){
             paint.color = const Color.fromARGB(255, 0, 0, 0);
           }
-          else if(data.allNodeList()[i].constXY[0]){
+          else if(nodes[i].constXYR[0]){
             paint.color = Colors.green;
           }
-          else if(data.allNodeList()[i].constXY[1]){
+          else if(nodes[i].constXYR[1]){
             paint.color = Colors.blue;
           }
           else{
             paint.color = Colors.white;
           }
-          canvas.drawCircle(data.allNodeList()[i].canvasPos, 5, paint);
-          // if(data.allNodeList()[i].constXY[0]){
-          //   canvas.drawLine(Offset(pos.dx-5, pos.dy-5), Offset(pos.dx-5, pos.dy+5), paint);
-          //   canvas.drawLine(Offset(pos.dx+5, pos.dy-5), Offset(pos.dx+5, pos.dy+5), paint);
-          // }
-          // if(data.allNodeList()[i].constXY[1]){
-          //   canvas.drawLine(Offset(pos.dx-5, pos.dy-5), Offset(pos.dx+5, pos.dy-5), paint);
-          //   canvas.drawLine(Offset(pos.dx-5, pos.dy+5), Offset(pos.dx+5, pos.dy+5), paint);
-          // }
+          canvas.drawCircle(nodes[i].canvasPos, 5, paint);
         }
       }
 
@@ -431,26 +430,26 @@ class TrussPainter extends CustomPainter {
         ..color = const Color.fromARGB(255, 0, 0, 0)
         ..strokeWidth = 4;
       
-      if(data.allNodeList().isNotEmpty){
-        for(int i = 0; i < data.allNodeList().length; i++){
-          if(data.allNodeList()[i].isSelect){
+      if(nodes.isNotEmpty){
+        for(int i = 0; i < nodes.length; i++){
+          if(nodes[i].isSelect){
             paint.color = Colors.red;
           }else{
             paint.color = Colors.black;
           }
-          Offset pos = data.allNodeList()[i].canvasPos;
-          if(data.allNodeList()[i].loadXY[0] != 0){
-            if(data.allNodeList()[i].loadXY[0] > 0){
-              Painter().arrow(Offset(pos.dx+5, pos.dy), Offset(pos.dx+30, pos.dy), paint, canvas);
+          Offset pos = nodes[i].canvasPos;
+          if(nodes[i].loadXY[0] != 0){
+            if(nodes[i].loadXY[0] > 0){
+              Painter().arrow(Offset(pos.dx+5, pos.dy), Offset(pos.dx+30, pos.dy), 3, canvas);
             }else{
-              Painter().arrow(Offset(pos.dx-5, pos.dy), Offset(pos.dx-30, pos.dy), paint, canvas);
+              Painter().arrow(Offset(pos.dx-5, pos.dy), Offset(pos.dx-30, pos.dy), 3, canvas);
             }
           }
-          if(data.allNodeList()[i].loadXY[1] != 0){
-            if(data.allNodeList()[i].loadXY[1] > 0){
-              Painter().arrow(Offset(pos.dx, pos.dy-5), Offset(pos.dx, pos.dy-30), paint, canvas);
+          if(nodes[i].loadXY[1] != 0){
+            if(nodes[i].loadXY[1] > 0){
+              Painter().arrow(Offset(pos.dx, pos.dy-5), Offset(pos.dx, pos.dy-30), 3, canvas);
             }else{
-              Painter().arrow(Offset(pos.dx, pos.dy+5), Offset(pos.dx, pos.dy+30), paint, canvas);
+              Painter().arrow(Offset(pos.dx, pos.dy+5), Offset(pos.dx, pos.dy+30), 3, canvas);
             }
           }
         }
@@ -461,60 +460,41 @@ class TrussPainter extends CustomPainter {
         ..style = PaintingStyle.stroke
         ..strokeWidth = 2;
 
-      if(data.allNodeList().isNotEmpty){
-        for(int i = 0; i < data.allNodeList().length; i++){
-          // paint.style = PaintingStyle.fill;
-          // paint.color = Colors.white;
-          // canvas.drawCircle(data.allNodeList()[i].canvasPos, 5, paint);
-          // paint.style = PaintingStyle.stroke;
-          if(data.allNodeList()[i].isSelect){
+      if(nodes.isNotEmpty){
+        for(int i = 0; i < nodes.length; i++){
+          if(nodes[i].isSelect){
             paint.color = Colors.red;
           }else{
             paint.color = const Color.fromARGB(255, 50, 50, 50);
           }
-          canvas.drawCircle(data.allNodeList()[i].canvasPos, 5, paint);
+          canvas.drawCircle(nodes[i].canvasPos, 5, paint);
         }
       }
 
       // 節点番号
-      if(data.allNodeList().isNotEmpty){
-        for(int i = 0; i < data.allNodeList().length; i++){
-          if(data.allNodeList()[i].isSelect){
-            Painter().text(canvas, size.width, (i+1).toString(), Offset(data.allNodeList()[i].canvasPos.dx - 30, data.allNodeList()[i].canvasPos.dy - 30), 20, Colors.red);
+      if(nodes.isNotEmpty){
+        for(int i = 0; i < nodes.length; i++){
+          Offset pos = nodes[i].canvasPos;
+          if(nodes[i].isSelect){
+            Painter().text(canvas, size.width, (i+1).toString(), Offset(pos.dx - 30, pos.dy - 30), 20, Colors.red);
           }else{
-            Painter().text(canvas, size.width, (i+1).toString(), Offset(data.allNodeList()[i].canvasPos.dx - 30, data.allNodeList()[i].canvasPos.dy - 30), 20, Colors.black);
+            Painter().text(canvas, size.width, (i+1).toString(), Offset(pos.dx - 30, pos.dy - 30), 20, Colors.black);
           }
         }
       }
     }
     else{
-
-      final result = data.getValue();
-      double max = result.$1;
-      double min = result.$2;
-
       // 要素
       for(int i = 0; i < data.elemList.length; i++){
         Color color = const Color.fromARGB(0, 255, 255, 255);
-        if(max != 0 || min != 0){
-          if(data.type == 0){
-            color = Painter().getColor((data.elemList[i].stlessXY[0] - min) / (max - min) * 100);
-          }
-          else if(data.type == 1){
-            color = Painter().getColor((data.elemList[i].stlessXY[1] - min) / (max - min) * 100);
-          }
-          else if(data.type == 2){
-            color = Painter().getColor((data.elemList[i].strainXY[0] - min) / (max - min) * 100);
-          }
-          else if(data.type == 3){
-            color = Painter().getColor((data.elemList[i].strainXY[1] - min) / (max - min) * 100);
-          }
+        if(data.resultMax != 0 || data.resultMin != 0){
+          color = Painter().getColor((data.resultList[i] - data.resultMin) / (data.resultMax - data.resultMin) * 100);
         }
 
-        Painter().angleRectangle(canvas, data.elemList[i].nodes[0]!.canvasAfterPos(),
-          data.elemList[i].nodes[1]!.canvasAfterPos(), size.height/20, color, true);
-        Painter().angleRectangle(canvas, data.elemList[i].nodes[0]!.canvasAfterPos(),
-          data.elemList[i].nodes[1]!.canvasAfterPos(), size.height/20, const Color.fromARGB(255, 49, 49, 49), false);
+        Offset p0 = data.elemList[i].nodeList[0]!.canvasAfterPos;
+        Offset p1 = data.elemList[i].nodeList[1]!.canvasAfterPos;
+        Painter().angleRectangle(canvas, p0, p1, data.canvasData.percentToCWidth(5), color, true);
+        Painter().angleRectangle(canvas, p0, p1, data.canvasData.percentToCWidth(5), const Color.fromARGB(255, 49, 49, 49), false);
       }
 
       // 節点
@@ -523,31 +503,28 @@ class TrussPainter extends CustomPainter {
         ..strokeWidth = 2;
 
       for(int i = 0; i < data.nodeList.length; i++){
+        Offset p = data.nodeList[i].canvasAfterPos;
         paint.style = PaintingStyle.fill;
         paint.color = Colors.white;
-        canvas.drawCircle(data.nodeList[i].canvasAfterPos(), 5, paint);
+        canvas.drawCircle(p, 5, paint);
         paint.style = PaintingStyle.stroke;
         paint.color = Colors.black;
-        canvas.drawCircle(data.nodeList[i].canvasAfterPos(), 5, paint);
+        canvas.drawCircle(p, 5, paint);
       }
 
       // 虹色
       Painter().rainbowBand(canvas, Offset(size.width - 60, 50), Offset(size.width - 100, size.height - 50), 50);
 
       // 最大最小
-      Painter().text(canvas, size.width, max.toStringAsFixed(2), Offset(size.width - 55, 40), 16, Colors.black);
-      Painter().text(canvas, size.width, min.toStringAsFixed(2), Offset(size.width - 55, size.height - 60), 16, Colors.black);
+      Painter().text(canvas, size.width, data.resultMax.toStringAsFixed(2), Offset(size.width - 55, 40), 16, Colors.black);
+      Painter().text(canvas, size.width, data.resultMin.toStringAsFixed(2), Offset(size.width - 55, size.height - 60), 16, Colors.black);
 
       // 値
       for(int i = 0; i < data.elemList.length; i++){
         if(data.elemNode == 2){
-          Offset pos1 = data.elemList[i].nodes[0]!.canvasAfterPos();
-          Offset pos2 = data.elemList[i].nodes[1]!.canvasAfterPos();
-          if(data.type == 0){
-            Painter().text(canvas, size.width, data.elemList[i].stlessXY[0].toStringAsFixed(2), Offset((pos1.dx+pos2.dx)/2, (pos1.dy+pos2.dy)/2), 16, Colors.black);
-          }else if(data.type == 2){
-            Painter().text(canvas, size.width, data.elemList[i].strainXY[0].toStringAsFixed(2), Offset((pos1.dx+pos2.dx)/2, (pos1.dy+pos2.dy)/2), 16, Colors.black);
-          }
+          Offset pos1 = data.elemList[i].nodeList[0]!.canvasAfterPos;
+          Offset pos2 = data.elemList[i].nodeList[1]!.canvasAfterPos;
+          Painter().text(canvas, size.width, data.resultList[i].toStringAsFixed(2), Offset((pos1.dx+pos2.dx)/2, (pos1.dy+pos2.dy)/2), 16, Colors.black);
         }
       }
 
@@ -555,7 +532,7 @@ class TrussPainter extends CustomPainter {
       for(int i = 0; i < data.nodeList.length; i++){
         if(data.nodeList[i].loadXY[0] != 0 || data.nodeList[i].loadXY[1] != 0){
           String text = "変位\nx：${data.nodeList[i].becPos.dx.toStringAsFixed(2)}\ny：${data.nodeList[i].becPos.dy.toStringAsFixed(2)}";
-          Painter().text(canvas, size.width, text, data.nodeList[i].canvasAfterPos(), 16, Colors.black);
+          Painter().text(canvas, size.width, text, data.nodeList[i].canvasAfterPos, 16, Colors.black);
         }
       }
     }

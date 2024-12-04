@@ -1,19 +1,24 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import 'package:kozo/utils/calculator.dart';
 
 class Painter{
-  void arrow(Offset start,  end, Paint paint, Canvas canvas){
+  void arrow(Offset start, end, double width, Canvas canvas){
+    Paint p = Paint()
+      ..style = PaintingStyle.fill
+      ..strokeWidth = 2 * width;
+
     if(start.dx > end.dx){
-      canvas.drawLine(start, Offset(end.dx+5, end.dy), paint);
+      canvas.drawLine(start, Offset(end.dx+4.3*width, end.dy), p);
     }else if(start.dx < end.dx){
-      canvas.drawLine(start, Offset(end.dx-5, end.dy), paint);
+      canvas.drawLine(start, Offset(end.dx-4.3*width, end.dy), p);
     }else if(start.dy > end.dy){
-      canvas.drawLine(start, Offset(end.dx, end.dy+5), paint);
+      canvas.drawLine(start, Offset(end.dx, end.dy+4.3*width), p);
     }else if(start.dy < end.dy){
-      canvas.drawLine(start, Offset(end.dx, end.dy-5), paint);
+      canvas.drawLine(start, Offset(end.dx, end.dy-4.3*width), p);
     }
 
-    const arrowSize = 10.0;
+    double arrowSize = 5 * width;
     const arrowAngle = math.pi / 6;
 
     final dx = end.dx - start.dx;
@@ -31,25 +36,21 @@ class Painter{
       end.dy - arrowSize * math.sin(angle + arrowAngle),
     );
     path.close();
-
-    canvas.drawPath(path, paint);
+    canvas.drawPath(path, p);
   }
 
   // 2点間を繋ぐ角度自由の長方形
-  void angleRectangle(Canvas canvas, Offset offset1, Offset offset2, double width, Color color, bool isfull){
+  void angleRectangle(Canvas canvas, Offset p0, Offset p1, double width, Color color, bool isfull){
     final paint = Paint()
       ..color = color;
     if(!isfull) paint.style = PaintingStyle.stroke;
 
-    double angle = math.atan2(offset2.dy - offset1.dy, offset2.dx - offset1.dx);
+    var p = angleRectanglePos(p0, p1, width);
 
-    double offsetX = (width / 2) * math.cos(angle + math.pi / 2);
-    double offsetY = (width / 2) * math.sin(angle + math.pi / 2);
-
-    Offset topLeft = offset1.translate(-offsetX, -offsetY);
-    Offset topRight = offset1.translate(offsetX, offsetY);
-    Offset bottomRight = offset2.translate(offsetX, offsetY);
-    Offset bottomLeft = offset2.translate(-offsetX, -offsetY);
+    Offset topLeft = p.$1;
+    Offset topRight = p.$2;
+    Offset bottomRight = p.$3;
+    Offset bottomLeft = p.$4;
 
     Path path = Path();
     path.moveTo(topLeft.dx, topLeft.dy);

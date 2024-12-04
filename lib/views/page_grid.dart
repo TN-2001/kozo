@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:kozo/components/painter.dart';
 import 'package:kozo/components/widgets.dart';
-import 'package:kozo/models/canvas_data.dart';
 import 'package:kozo/models/data.dart';
 
 class PageGrid extends StatefulWidget {
@@ -14,10 +13,9 @@ class PageGrid extends StatefulWidget {
 }
 
 class _PageGridState extends State<PageGrid> {
-  late GlobalKey<ScaffoldState> scaffoldKey;
-  late Data data;
-  final CanvasData canvasData = CanvasData();
-  static List<String> mathTpeList = ["集中荷重", "分布荷重", "自重"];
+  late GlobalKey<ScaffoldState> scaffoldKey; // メニュー用キー
+  late Data data; // データ
+  static List<String> mathTpeList = ["中央荷重", "分布荷重", "自重"];
   static List<String> devTypeXYList = 
     ["X方向応力","Y方向応力","せん断応力","最大主応力","最小主応力","X方向ひずみ","y方向ひずみ","せん断ひずみ","なし"];
   int toolNum = 0, devTypeNum = 0;
@@ -41,7 +39,7 @@ class _PageGridState extends State<PageGrid> {
     for(int i = 0; i < countY; i++){
       for(int j = 0; j < countX; j++){
         Elem elem = Elem();
-        elem.nodes = [data.nodeList[i*(countX+1)+j],data.nodeList[i*(countX+1)+j+1],data.nodeList[(i+1)*(countX+1)+j+1],data.nodeList[(i+1)*(countX+1)+j]];
+        elem.nodeList = [data.nodeList[i*(countX+1)+j],data.nodeList[i*(countX+1)+j+1],data.nodeList[(i+1)*(countX+1)+j+1],data.nodeList[(i+1)*(countX+1)+j]];
         data.elemList.add(elem);
       }
     }
@@ -89,7 +87,7 @@ class _PageGridState extends State<PageGrid> {
               icon: Icons.play_arrow,
               onPressed: (){
                 setState(() {
-                  data.calculationDes();
+                  data.calculation(0);
                   devTypeNum = 0;
                 });
               },
@@ -124,7 +122,7 @@ class _PageGridState extends State<PageGrid> {
         onTap: (position) {
           if(data.isCalculation){
             setState(() {
-              data.selectElem(canvasData.cToD(position));
+              data.selectElem(position,0);
               if(data.selectedNumber >= 0){
                 data.selectedNumber = data.selectedNumber;
               }
@@ -134,7 +132,7 @@ class _PageGridState extends State<PageGrid> {
         onDrag: (position) {
           if(!data.isCalculation){
             setState(() {
-              data.selectElem(canvasData.cToD(position));
+              data.selectElem(position,0);
               if(data.selectedNumber >= 0){
                 if(toolNum == 0 && data.elemList[data.selectedNumber].e < 1){
                   data.elemList[data.selectedNumber].e = 1;
@@ -146,63 +144,61 @@ class _PageGridState extends State<PageGrid> {
             });
           }
         },
-        painter: GridPainter(data: data, canvasData: canvasData),
+        painter: GridPainter(data: data),
       ),
     );
   }
 }
 
 class GridPainter extends CustomPainter {
-  const GridPainter({required this.data, required this.canvasData});
+  const GridPainter({required this.data});
 
   final Data data;
-  final CanvasData canvasData;
 
   @override
   void paint(Canvas canvas, Size size) {
-    double nodeMinX = data.getNodeMinX();
-    double nodeMinY = data.getNodeMinY();
-    double nodeMaxX = data.getNodeMaxX();
-    double nodeMaxY = data.getNodeMaxY();
-    canvasData.setScale(125, 100, size.width-125, size.height-100, nodeMinX, nodeMinY, nodeMaxX, nodeMaxY);
+    Rect dataRect = data.rect();
+    data.updateCanvasPos(Rect.fromLTRB(125, 100, size.width-125, size.height-100), 0);
 
     Paint paint = Paint();
 
     // 絵
+    Rect canvasRect = data.canvasData.dToCRect(dataRect);
+    double scale = data.canvasData.scale;
     paint.color = const Color.fromARGB(255, 0, 0, 0);
     var path = Path();
-    path.moveTo(canvasData.dToC(Offset(nodeMinX, nodeMinY)).dx, canvasData.dToC(Offset(nodeMinX, nodeMinY)).dy);
-    path.lineTo(canvasData.dToC(Offset(nodeMinX+2, nodeMinY)).dx, canvasData.dToC(Offset(nodeMinX+2, nodeMinY)).dy);
-    path.lineTo(canvasData.dToC(Offset(nodeMinX+2, nodeMinY-1)).dx, canvasData.dToC(Offset(nodeMinX+2, nodeMinY-1)).dy);
-    path.lineTo(canvasData.dToC(Offset(nodeMinX, nodeMinY-1)).dx, canvasData.dToC(Offset(nodeMinX, nodeMinY-1)).dy);
+    path.moveTo(canvasRect.left, canvasRect.bottom);
+    path.lineTo(canvasRect.left+2*scale, canvasRect.bottom);
+    path.lineTo(canvasRect.left+2*scale, canvasRect.bottom+1*scale);
+    path.lineTo(canvasRect.left, canvasRect.bottom+1*scale);
     path.close();
-    path.moveTo(canvasData.dToC(Offset(nodeMaxX-2, nodeMinY)).dx, canvasData.dToC(Offset(nodeMaxX-2, nodeMinY)).dy);
-    path.lineTo(canvasData.dToC(Offset(nodeMaxX, nodeMinY)).dx, canvasData.dToC(Offset(nodeMaxX, nodeMinY)).dy);
-    path.lineTo(canvasData.dToC(Offset(nodeMaxX, nodeMinY-1)).dx, canvasData.dToC(Offset(nodeMaxX, nodeMinY-1)).dy);
-    path.lineTo(canvasData.dToC(Offset(nodeMaxX-2, nodeMinY-1)).dx, canvasData.dToC(Offset(nodeMaxX-2, nodeMinY-1)).dy);
+    path.moveTo(canvasRect.right-2*scale, canvasRect.bottom);
+    path.lineTo(canvasRect.right, canvasRect.bottom);
+    path.lineTo(canvasRect.right, canvasRect.bottom+1*scale);
+    path.lineTo(canvasRect.right-2*scale, canvasRect.bottom+1*scale);
     path.close();
     canvas.drawPath(path, paint);
 
     paint.color = const Color.fromARGB(255, 96, 205, 255);
     path = Path();
-    path.moveTo(canvasData.dToC(Offset(nodeMinX, nodeMinY-2)).dx, canvasData.dToC(Offset(nodeMinX, nodeMinY-2)).dy);
-    path.lineTo(canvasData.dToC(Offset(nodeMaxX, nodeMinY-2)).dx, canvasData.dToC(Offset(nodeMaxX, nodeMinY-2)).dy);
-    path.lineTo(canvasData.dToC(Offset(nodeMaxX, nodeMinY-50)).dx, canvasData.dToC(Offset(nodeMaxX, nodeMinY-50)).dy);
-    path.lineTo(canvasData.dToC(Offset(nodeMinX, nodeMinY-50)).dx, canvasData.dToC(Offset(nodeMinX, nodeMinY-50)).dy);
+    path.moveTo(canvasRect.left, canvasRect.bottom+2*scale);
+    path.lineTo(canvasRect.right, canvasRect.bottom+2*scale);
+    path.lineTo(canvasRect.right, canvasRect.bottom+100*scale);
+    path.lineTo(canvasRect.left, canvasRect.bottom+100*scale);
     path.close();
     canvas.drawPath(path, paint);
 
     paint.color = const Color.fromARGB(255, 103, 103, 103);
     path = Path();
-    path.moveTo(canvasData.dToC(Offset(nodeMinX-50, nodeMinY-1)).dx, canvasData.dToC(Offset(nodeMinX-50, nodeMinY-1)).dy);
-    path.lineTo(canvasData.dToC(Offset(nodeMinX+4, nodeMinY-1)).dx, canvasData.dToC(Offset(nodeMinX+4, nodeMinY-1)).dy);
-    path.lineTo(canvasData.dToC(Offset(nodeMinX+4, nodeMinY-50)).dx, canvasData.dToC(Offset(nodeMinX+4, nodeMinY-50)).dy);
-    path.lineTo(canvasData.dToC(Offset(nodeMinX-50, nodeMinY-50)).dx, canvasData.dToC(Offset(nodeMinX-50, nodeMinY-50)).dy);
+    path.moveTo(canvasRect.left-100*scale, canvasRect.bottom+1*scale);
+    path.lineTo(canvasRect.left+4*scale, canvasRect.bottom+1*scale);
+    path.lineTo(canvasRect.left+4*scale, canvasRect.bottom+100*scale);
+    path.lineTo(canvasRect.left-100*scale, canvasRect.bottom+100*scale);
     path.close();
-    path.moveTo(canvasData.dToC(Offset(nodeMaxX-4, nodeMinY-1)).dx, canvasData.dToC(Offset(nodeMaxX-4, nodeMinY-1)).dy);
-    path.lineTo(canvasData.dToC(Offset(nodeMaxX+50, nodeMinY-1)).dx, canvasData.dToC(Offset(nodeMaxX+50, nodeMinY-1)).dy);
-    path.lineTo(canvasData.dToC(Offset(nodeMaxX+50, nodeMinY-50)).dx, canvasData.dToC(Offset(nodeMaxX+50, nodeMinY-50)).dy);
-    path.lineTo(canvasData.dToC(Offset(nodeMaxX-4, nodeMinY-50)).dx, canvasData.dToC(Offset(nodeMaxX-4, nodeMinY-50)).dy);
+    path.moveTo(canvasRect.right-4*scale, canvasRect.bottom+1*scale);
+    path.lineTo(canvasRect.right+100*scale, canvasRect.bottom+1*scale);
+    path.lineTo(canvasRect.right+100*scale, canvasRect.bottom+100*scale);
+    path.lineTo(canvasRect.right-4*scale, canvasRect.bottom+100*scale);
     path.close();
     canvas.drawPath(path, paint);
 
@@ -216,11 +212,10 @@ class GridPainter extends CustomPainter {
           if(data.elemList[i].e > 0){
             final path = Path();
             for(int j = 0; j < data.elemNode; j++){
+              Offset pos = data.elemList[i].canvasPosList[j];
               if(j == 0){
-                Offset pos = canvasData.dToC(data.elemList[i].nodes[j]!.pos);
                 path.moveTo(pos.dx, pos.dy);
               }else{
-                Offset pos = canvasData.dToC(data.elemList[i].nodes[j]!.pos);
                 path.lineTo(pos.dx, pos.dy);
               }
             }
@@ -239,11 +234,10 @@ class GridPainter extends CustomPainter {
         for(int i = 0; i < data.elemList.length; i++){
           final path = Path();
           for(int j = 0; j < data.elemNode; j++){
+            Offset pos = data.elemList[i].canvasPosList[j];
             if(j == 0){
-              Offset pos = canvasData.dToC(data.elemList[i].nodes[j]!.pos);
               path.moveTo(pos.dx, pos.dy);
             }else{
-              Offset pos = canvasData.dToC(data.elemList[i].nodes[j]!.pos);
               path.lineTo(pos.dx, pos.dy);
             }
           }
@@ -258,20 +252,20 @@ class GridPainter extends CustomPainter {
         paint.style = PaintingStyle.fill;
         paint.strokeWidth = 3.0;
         for(int i = 34; i < 37; i++){
-          Offset pos = data.nodeList[i].pos;
-          Painter().arrow(canvasData.dToC(pos), canvasData.dToC(Offset(pos.dx, pos.dy-1.5)), paint, canvas);
+          Offset pos = data.nodeList[i].canvasPos;
+          Painter().arrow(pos, Offset(pos.dx, pos.dy+data.canvasData.scale*1.5), 3, canvas);
         }
       }else if(data.powerType == 1){ // 分布荷重
         paint.color = const Color.fromARGB(255, 0, 0, 0);
         paint.style = PaintingStyle.fill;
         paint.strokeWidth = 3.0;
         for(int i = 2; i < 69; i += 3){
-          Offset pos = data.nodeList[i].pos;
-          Painter().arrow(canvasData.dToC(pos), canvasData.dToC(Offset(pos.dx, pos.dy-1.5)), paint, canvas);
+          Offset pos = data.nodeList[i].canvasPos;
+          Painter().arrow(pos, Offset(pos.dx, pos.dy+data.canvasData.scale*1.5), 3, canvas);
         }
-        Offset pos1 = data.nodeList[2].pos;
-        Offset pos2 = data.nodeList[68].pos;
-        canvas.drawLine(canvasData.dToC(Offset(pos1.dx, pos1.dy-1.5)), canvasData.dToC(Offset(pos2.dx, pos2.dy-1.5)), paint);
+        Offset pos1 = data.nodeList[2].canvasPos;
+        Offset pos2 = data.nodeList[68].canvasPos;
+        canvas.drawLine(Offset(pos1.dx, pos1.dy+data.canvasData.scale*1.5), Offset(pos2.dx, pos2.dy+data.canvasData.scale*1.5), paint);
       }
     }
     else{
@@ -287,11 +281,10 @@ class GridPainter extends CustomPainter {
 
           final path = Path();
           for(int j = 0; j < data.elemNode; j++){
+            Offset pos = data.elemList[i].nodeList[j]!.canvasAfterPos;
             if(j == 0){
-              Offset pos = canvasData.dToC(data.elemList[i].nodes[j]!.afterPos());
               path.moveTo(pos.dx, pos.dy);
             }else{
-              Offset pos = canvasData.dToC(data.elemList[i].nodes[j]!.afterPos());
               path.lineTo(pos.dx, pos.dy);
             }
           }
@@ -310,11 +303,10 @@ class GridPainter extends CustomPainter {
           if(data.elemList[i].e > 0){
             final path = Path();
             for(int j = 0; j < data.elemNode; j++){
+              Offset pos = data.elemList[i].nodeList[j]!.canvasAfterPos;
               if(j == 0){
-                Offset pos = canvasData.dToC(data.elemList[i].nodes[j]!.afterPos());
                 path.moveTo(pos.dx, pos.dy);
               }else{
-                Offset pos = canvasData.dToC(data.elemList[i].nodes[j]!.afterPos());
                 path.lineTo(pos.dx, pos.dy);
               }
             }
@@ -334,7 +326,7 @@ class GridPainter extends CustomPainter {
       // 選択
       if(data.selectedNumber >= 0){
         if(data.elemList[data.selectedNumber].e > 0){
-          Painter().text(canvas, size.width, data.resultList[data.selectedNumber].toStringAsFixed(5), canvasData.dToC(data.elemList[data.selectedNumber].nodes[0]!.afterPos()), 16, Colors.black);
+          Painter().text(canvas, size.width, data.resultList[data.selectedNumber].toStringAsFixed(5), data.elemList[data.selectedNumber].nodeList[0]!.canvasAfterPos, 16, Colors.black);
         }
       }
       paint = Paint()
@@ -346,11 +338,10 @@ class GridPainter extends CustomPainter {
         if(data.elemList[data.selectedNumber].e > 0){
           final path = Path();
           for(int j = 0; j < data.elemNode; j++){
+            Offset pos = data.elemList[data.selectedNumber].nodeList[j]!.canvasAfterPos;
             if(j == 0){
-              Offset pos = canvasData.dToC(data.elemList[data.selectedNumber].nodes[j]!.afterPos());
               path.moveTo(pos.dx, pos.dy);
             }else{
-              Offset pos = canvasData.dToC(data.elemList[data.selectedNumber].nodes[j]!.afterPos());
               path.lineTo(pos.dx, pos.dy);
             }
           }

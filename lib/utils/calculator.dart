@@ -152,3 +152,42 @@ double distanceFromPointToSegment(Offset A, Offset B, Offset P) {
     return sqrt(distanceX * distanceX + distanceY * distanceY);
   }
 }
+
+// ある点pが点p0~3の四角形要素の中にあるかどうか
+bool isPointInRectangle(Offset p, Offset p0, Offset p1, Offset p2, Offset p3) {
+  // クロスプロダクトを計算するヘルパー関数
+  double cross(Offset v1, Offset v2) {
+    return v1.dx * v2.dy - v1.dy * v2.dx;
+  }
+
+  // 各辺に対するベクトルを計算
+  Offset v0 = p0 - p;
+  Offset v1 = p1 - p;
+  Offset v2 = p2 - p;
+  Offset v3 = p3 - p;
+
+  // 4つの三角形の符号付き面積を計算
+  double cross0 = cross(v0, v1);
+  double cross1 = cross(v1, v2);
+  double cross2 = cross(v2, v3);
+  double cross3 = cross(v3, v0);
+
+  // 全ての面積が同じ符号を持つかをチェック
+  return (cross0 >= 0 && cross1 >= 0 && cross2 >= 0 && cross3 >= 0) || (cross0 <= 0 && cross1 <= 0 && cross2 <= 0 && cross3 <= 0);
+}
+
+// 2点間を繋ぐ角度自由の長方形
+(Offset topLeft, Offset topRight, Offset bottomRight, Offset bottomLeft) angleRectanglePos(Offset p0, Offset p1, double width) {
+  double angle = atan2(p1.dy - p0.dy, p1.dx - p0.dx);
+
+  double offsetX = (width / 2) * cos(angle + pi / 2);
+  double offsetY = (width / 2) * sin(angle + pi / 2);
+
+  Offset topLeft = p0.translate(-offsetX, -offsetY);
+  Offset topRight = p0.translate(offsetX, offsetY);
+  Offset bottomRight = p1.translate(offsetX, offsetY);
+  Offset bottomLeft = p1.translate(-offsetX, -offsetY);
+
+  return(topLeft, topRight, bottomRight, bottomLeft);
+}
+
