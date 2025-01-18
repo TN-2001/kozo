@@ -158,7 +158,7 @@ class GridPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     Rect dataRect = data.rect();
-    data.updateCanvasPos(Rect.fromLTRB(125, 100, size.width-125, size.height-100), 0);
+    data.updateCanvasPos(Rect.fromLTRB((size.width/10), (size.height/10), size.width-(size.width/10), size.height-(size.height/10)), 0);
 
     Paint paint = Paint();
 

@@ -306,7 +306,7 @@ import 'dart:math';
     if (r1r1 < 1e-99) r1r1 = 1e-9;
 
     // 収束のチェック
-    if (sqrt(rr / r0r0) < 1e-11) {
+    if (sqrt(rr / r0r0) < 1e-12) {
       for (int i = 0; i < neq; i++) {
         disp[i] *= diag[i];
       }
@@ -343,10 +343,24 @@ import 'dart:math';
     double b1 = ei / he * (-6.0 / he * v1 - 4.0 * q1 + 6.0 / he * v2 - 2.0 * q2);
     double b2 = ei / he * (6.0 / he * v1 + 2.0 * q1 - 6.0 / he * v2 + 4.0 * q2);
 
-    fint[ie][0] = -se; // 構造力学用
-    fint[ie][1] = b1;
-    fint[ie][2] = b2;
+    fint[ie][0] = -se; // せん断力
+    fint[ie][1] = b1; // 曲げモーメント
+    fint[ie][2] = b2; // 曲げモーメント
   }
+
+  // 本来せん断力が0のとき（モーメント荷重のときは普通0、解析だと誤差がでる）
+  double sumShear = 0.0;
+  double sumBend = 0.0;
+  for (int ie = 0; ie < nelx2; ie++) {
+    sumShear += fint[ie][0].abs();
+    sumBend += fint[ie][1].abs();
+  }
+
+  if ( sumShear < sumBend * 0.001 ) {
+    for (int ie = 0; ie < nelx2; ie++) {
+      fint[ie][0] = 0.0;
+    }
+  } 
 
   //-----------------------------------------------------------------------------------------------
   // WRITE

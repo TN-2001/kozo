@@ -49,7 +49,7 @@ class MainViewState extends State<MainView> {
     return Scaffold(
       key: scaffoldKey,
       drawer: MyDrawer(
-        itemList: const ["トラス","はり","橋",], 
+        itemList: const ["はり","トラス","橋",], 
         onTap: (number){
           setState(() {
             _pageNum = number;
@@ -60,8 +60,8 @@ class MainViewState extends State<MainView> {
       body: Column(
         children: [
           
-          if(_pageNum == 0) PageTruss(scaffoldKey: scaffoldKey,)
-          else if(_pageNum == 1) PageBeam(scaffoldKey: scaffoldKey)
+          if(_pageNum == 0) PageBeam(scaffoldKey: scaffoldKey,)
+          else if(_pageNum == 1) PageTruss(scaffoldKey: scaffoldKey)
           else if(_pageNum == 2) PageGrid(scaffoldKey: scaffoldKey,)
         ],
       ),

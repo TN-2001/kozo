@@ -1,4 +1,4 @@
-import 'dart:math' as math;
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:kozo/utils/calculator.dart';
 
@@ -20,21 +20,21 @@ class Painter{
     }
 
     double arrowSize = 5 * width;
-    const arrowAngle = math.pi / 6;
+    const arrowAngle = pi / 6;
 
     final dx = end.dx - start.dx;
     final dy = end.dy - start.dy;
-    final angle = math.atan2(dy, dx);
+    final angle = atan2(dy, dx);
 
     final path = Path();
     path.moveTo(
-      end.dx - arrowSize * math.cos(angle - arrowAngle),
-      end.dy - arrowSize * math.sin(angle - arrowAngle),
+      end.dx - arrowSize * cos(angle - arrowAngle),
+      end.dy - arrowSize * sin(angle - arrowAngle),
     );
     path.lineTo(end.dx, end.dy);
     path.lineTo(
-      end.dx - arrowSize * math.cos(angle + arrowAngle),
-      end.dy - arrowSize * math.sin(angle + arrowAngle),
+      end.dx - arrowSize * cos(angle + arrowAngle),
+      end.dy - arrowSize * sin(angle + arrowAngle),
     );
     path.close();
     canvas.drawPath(path, p);
@@ -125,10 +125,10 @@ class Painter{
 
   // 虹色帯
   void rainbowBand(Canvas canvas, Offset offset1, Offset offset2, int number){
-    final double minX = math.min(offset1.dx, offset2.dx);
-    final double maxX = math.max(offset1.dx, offset2.dx);
-    final double minY = math.min(offset1.dy, offset2.dy);
-    final double maxY = math.max(offset1.dy, offset2.dy);
+    final double minX = min(offset1.dx, offset2.dx);
+    final double maxX = max(offset1.dx, offset2.dx);
+    final double minY = min(offset1.dy, offset2.dy);
+    final double maxY = max(offset1.dy, offset2.dy);
     final paint = Paint();
     for(int i = 0; i < number; i++){
       paint.color = Painter().getColor((number-i)/number * 100);
@@ -170,5 +170,146 @@ class Painter{
     }
 
     return color;
+  }
+}
+
+class MyPainter
+{
+  // 数字を文字にする
+  static String doubleToString(double value, int digit) {
+    // 数字を桁数(digit)分を文字にする
+    String text;
+    if(value == 0.0) {
+      text = " 0";
+    } else if(value.abs() >= 1.0 * pow(10, -(digit-1))) {
+      text = value.toStringAsPrecision(digit);
+    } else {
+      text = value.toStringAsExponential(digit-1);
+    }
+
+    // -の分のスペースを開ける
+    if(value > 0) {
+      text = " $text";
+    }
+
+    return text;
+  }
+
+
+  // 文字
+  static void text(Canvas canvas, Offset offset, String text, double fontSize, Color color, bool isOutline, double width) {
+    if(isOutline) {
+      final textSpan1 = TextSpan(
+        text: text,
+        style: TextStyle(
+          foreground: Paint()
+            ..style = PaintingStyle.stroke // 輪郭（りんかく）
+            ..strokeWidth = 5 // 輪郭の太さ
+            ..strokeJoin = StrokeJoin.round // 輪郭の角を滑らかに
+            ..color = Colors.white,
+          fontSize: fontSize,
+        ),
+      );
+      final textPainter1 = TextPainter(
+        text: textSpan1,
+        textDirection: TextDirection.ltr,
+      );
+      textPainter1.layout(
+        minWidth: 0,
+        maxWidth: width,
+      );
+      textPainter1.paint(canvas, offset);
+    }
+    
+    final textSpan = TextSpan(
+      text: text,
+      style: TextStyle(
+        color: color,
+        fontSize: fontSize,
+      ),
+    );
+    final textPainter = TextPainter(
+      text: textSpan,
+      textDirection: TextDirection.ltr,
+    );
+    textPainter.layout(
+      minWidth: 0,
+      maxWidth: width,
+    );
+    textPainter.paint(canvas, offset);
+  }
+
+  // 正三角形
+  static void triangleEquilateral(Offset offset, double height, double angle, Paint paint, Canvas canvas) {
+    double lineLength = height / cos(pi/6);
+    final path = Path();
+    path.moveTo(offset.dx, offset.dy);
+    path.lineTo(offset.dx - lineLength * cos(angle - pi/6), offset.dy + lineLength * sin(angle - pi/6));
+    path.lineTo(offset.dx - lineLength * cos(angle + pi/6), offset.dy + lineLength * sin(angle + pi/6));
+    path.close();
+    canvas.drawPath(path, paint);
+  }
+
+  static void arrowArc(Rect rect, double startAngle, double sweepAngele, Canvas canvas) {
+
+  }
+
+  // メモリ
+  static void memory(Canvas canvas, Rect rect, double max, double min, double value, bool isReverse) {
+    Paint paint = Paint();
+
+    double diff = max - min; // 値の間隔
+    if(diff == 0.0) return; 
+
+    // 値の範囲に応じた拡大率を計算
+    double digitScale = 1.0;
+    if (diff > 10.0) {
+      while (diff > 10.0) {
+        diff /= 10.0;
+        digitScale /= 10.0;
+      }
+    } else if (diff < 1.0 && diff > 0) {
+      while (diff < 1.0) {
+        diff *= 10.0;
+        digitScale *= 10.0;
+      }
+    }
+
+    double maxScale = max * digitScale;
+    double nextValue = value * digitScale;
+    maxScale = double.parse(maxScale.toStringAsFixed(3));
+    nextValue = double.parse(nextValue.toStringAsFixed(3));
+
+    if((maxScale*100).toInt() % (nextValue*100).toInt() != 0) {
+      maxScale = ((maxScale / nextValue).floor()) * nextValue;
+    }
+
+    maxScale /= digitScale;
+    nextValue /= digitScale;
+    diff /= digitScale;
+
+    canvas.drawLine(rect.topCenter, rect.bottomCenter, paint);
+
+    for (int i = 0; ; i++) {
+      double value = maxScale - i * nextValue;
+      if (value < min - 1/(digitScale*100)) break;
+
+      Offset p = Offset.zero;
+      if(!isReverse) {
+        p = Offset(rect.center.dx, rect.top + (max - value) / diff * rect.height);
+      } else {
+        p = Offset(rect.center.dx, rect.top + (value - min) / diff * rect.height);
+      }
+      canvas.drawLine(Offset(rect.center.dx - 5, p.dy), Offset(rect.center.dx + 5, p.dy), paint);
+
+      String label;
+      if(value.abs() <= 1/(digitScale*100)) {
+        label = " 0";
+      } else {
+        label = doubleToString(value, 2);
+      }
+
+      text(canvas, Offset(rect.center.dx + 10, p.dy-13), label, 16, Colors.black, false, 500);
+    }
   }
 }

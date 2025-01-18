@@ -427,3 +427,162 @@ class MyCustomPaint extends StatelessWidget {
     );
   }
 }
+
+class MyProperty extends StatelessWidget {
+  const MyProperty({
+    super.key, this.name, 
+    this.width, this.height = 25,
+    this.labelWidth, this.labelAlignment = Alignment.centerLeft,
+    this.filledWidth = 100,
+    this.boolValue, this.onChangedBool, 
+    this.intValue, this.onChangedInt, 
+    this.doubleValue, this.onChangedDouble, 
+    this.buttonName, this.onButtonPressed, 
+    this.children, });
+
+  final double? width; // 全体の幅
+  final double height; // 全体の高さ
+  final double? labelWidth; // ラベルの幅
+  final Alignment labelAlignment; // ラベルの位置
+  final String? name;
+  final double filledWidth; // フィールドの幅
+  final bool? boolValue;
+  final void Function(bool value)? onChangedBool;
+  final int? intValue;
+  final void Function(int value)? onChangedInt;
+  final double? doubleValue;
+  final void Function(double value)? onChangedDouble;
+  final String? buttonName;
+  final void Function()? onButtonPressed;
+  final List<MyProperty>? children;
+
+  @override
+  Widget build(BuildContext context) {
+    Widget lavel() {
+      return FittedBox(
+        fit: BoxFit.fill,
+        child: Text(name!),
+      );
+    }
+
+    Widget row() {
+      return Row(
+        children: [
+          if(name != null)...{
+            // ラベル
+            if(labelWidth != null)...{
+              SizedBox(
+                width: labelWidth,
+                child: Container(
+                  alignment: labelAlignment,
+                  height: height,
+                  padding: const EdgeInsets.only(left: 5, right: 5), 
+
+                  child: lavel(),
+                ),
+              )
+            }else if(width != null)...{
+              Expanded(
+                child: Container(
+                  alignment: labelAlignment,
+                  height: height,
+                  padding: const EdgeInsets.only(left: 5, right: 5), 
+                  child: lavel(),
+                ),
+              ),
+            }else...{
+              Container(
+                alignment: labelAlignment,
+                height: height,
+                padding: const EdgeInsets.only(left: 5, right: 5), 
+                child: lavel(),
+              ),
+            }
+          },
+
+          if(boolValue != null && onChangedBool != null)...{
+            // bool
+            Container(
+              alignment: Alignment.centerRight,
+              height: height,
+              width: height,
+              child: Checkbox(
+                value: boolValue,
+                onChanged: (value) {
+                  onChangedBool!(value!);
+                },
+              ),
+            ),
+          }else if(onChangedInt != null)...{
+            // int
+            Container(
+              alignment: Alignment.centerRight,
+              width: filledWidth,
+              height: height,
+              child: TextField(
+                controller: TextEditingController(text: (intValue != null) ? "${intValue!}" : ""),
+                inputFormatters: myInputFormattersNumber,
+                decoration: myInputDecoration,
+                onChanged: (value) {
+                  if(int.tryParse(value) != null){
+                    onChangedInt!(int.parse(value));
+                  }else if(value == "") {
+                    onChangedInt!(0);
+                  }
+                },
+              ),
+            ),
+          }else if(onChangedDouble != null)...{
+            // double
+            Container(
+              alignment: Alignment.centerRight,
+              width: filledWidth,
+              height: height,
+              child: TextField(
+                controller: TextEditingController(text: (doubleValue != null) ? "${doubleValue!}" : ""),
+                inputFormatters: myInputFormattersNumber,
+                decoration: myInputDecoration,
+                onChanged: (value) {
+                  if(double.tryParse(value) != null){
+                    onChangedDouble!(double.parse(value));
+                  }else if(value == "") {
+                    onChangedDouble!(0.0);
+                  }
+                },
+              ),
+            ),
+          }else if(buttonName != null && onButtonPressed != null)...{
+            // ボタン
+            Container(
+              alignment: Alignment.centerRight,
+              width: filledWidth,
+              height: height,
+              child: ElevatedButton(
+                onPressed: onButtonPressed!,
+                style: myButtonStyleBorder,
+                child: Text(buttonName!),
+              ),
+            ),
+          }else if(children != null)...{
+            IntrinsicWidth(
+              child: Row(children: [
+                for(int i = 0; i < children!.length; i++)...{
+                  children![i],
+                }
+              ],),
+            )
+          }
+        ],
+      );
+    }
+
+    if(width != null){
+      return SizedBox(
+        width: width,
+        child: row()
+      );
+    }else{
+      return row();
+    }
+  }
+}

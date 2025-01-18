@@ -332,7 +332,7 @@ class Data
 
     for(int i = 0; i < nodeList.length; i++){
       double dis = (nodeList[i].canvasPos - pos).distance;
-      if(dis <= 10){
+      if(dis <= 15){
         selectedNumber = i;
         nodeList[i].isSelect = true;
         break;

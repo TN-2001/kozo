@@ -1,4 +1,7 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
+import 'package:kozo/components/decorations.dart';
 import 'package:kozo/components/painter.dart';
 import 'package:kozo/components/widgets.dart';
 import 'package:kozo/models/canvas_data.dart';
@@ -16,9 +19,10 @@ class PageBeam extends StatefulWidget {
 class _PageBeamState extends State<PageBeam> {
   late GlobalKey<ScaffoldState> scaffoldKey;
   late Data data;
-  List<String> devTypes = ["せん断力","曲げモーメント","たわみ","たわみ角"];
+  static const List<String> devTypes = ["変形図","せん断力図","曲げモーメント図",];
   int devTypeNum = 0;
   int toolTypeNum = 0, toolNum = 0;
+  bool isSumaho = false;
 
 
   @override
@@ -32,6 +36,17 @@ class _PageBeamState extends State<PageBeam> {
 
   @override
   Widget build(BuildContext context) {
+    final Size size = MediaQuery.of(context).size; // 画面サイズ取得
+    if(size.height > size.width && isSumaho == false) {
+      setState(() {
+        isSumaho = true;
+      });
+    }else if (size.height < size.width && isSumaho == true) {
+      setState(() {
+        isSumaho = false;
+      });
+    }
+
     return MyScaffold(
       header: MyHeader(
         children: [
@@ -58,6 +73,8 @@ class _PageBeamState extends State<PageBeam> {
                   }else if(toolTypeNum == 1 && toolNum == 0){
                     data.elem = Elem();
                     data.elem!.number = data.elemList.length;
+                    data.elem!.e = 1;
+                    data.elem!.v = 1;
                   }
                   data.initSelect();
                 });
@@ -79,6 +96,8 @@ class _PageBeamState extends State<PageBeam> {
                     }else if(toolTypeNum == 1 && toolNum == 0){
                       data.elem = Elem();
                       data.elem!.number = data.elemList.length;
+                      data.elem!.e = 1;
+                      data.elem!.v = 1;
                     }
                     data.initSelect();
                   });
@@ -99,16 +118,18 @@ class _PageBeamState extends State<PageBeam> {
             ),
           }else...{
             // 解析結果選択
-            MyMenuDropdown(
-              items: devTypes,
-              value: devTypeNum,
-              onPressed: (value){
-                setState(() {
-                  devTypeNum = value;
-                  data.selectResult(value);
-                });
-              },
-            ),
+            if(!isSumaho)... {
+              MyMenuDropdown(
+                items: devTypes,
+                value: devTypeNum,
+                onPressed: (value){
+                  setState(() {
+                    devTypeNum = value;
+                    data.selectResult(value);
+                  });
+                },
+              ),
+            },
             // 再開ボタン
             MyIconButton(
               icon: Icons.restart_alt,
@@ -141,115 +162,182 @@ class _PageBeamState extends State<PageBeam> {
                 });
               }
             },
-            painter: BeamPainter(data: data, devTypeNum: devTypeNum),
+            painter: BeamPainter(data: data, devTypeNum: devTypeNum, isSumaho: isSumaho),
           ),
           if(!data.isCalculation)...{
             if(toolTypeNum == 0)...{
               if(toolNum == 0)...{
-                // ノード追加
-                nodeSetting(true),
+                // 新規ノード
+                nodeSetting(true, size.width),
               }
               else if(data.selectedNumber >= 0)...{
-                // ノード選択
-                nodeSetting(false),
+                // 既存ノード
+                nodeSetting(false, size.width),
               }
             }
             else if(toolTypeNum == 1)...{
               if(toolNum == 0)...{
-                // 要素の追加
-                elemSetting(true),
+                // 新規要素
+                elemSetting(true, size.width),
               }
               else if(data.selectedNumber >= 0)...{
-                // 要素の削除
-                elemSetting(false),
+                // 既存要素
+                elemSetting(false, size.width),
               }
             }
           },
+
         ]
       ),
     );
   }
 
-  Widget nodeSetting(bool isAdd){
-    // 共通部分
-    List<MySettingItem> items(Node node){
+  Widget settingPC(List<MyProperty> propertyList, String title, String buttonName, Function() onButtonPressed, double width) {
+    return MyAlign(
+      alignment: Alignment.bottomCenter,
+      isIntrinsicHeight: true,
+      isIntrinsicWidth: true,
+      child: Container(
+        margin: const EdgeInsets.all(10),
+        padding: const EdgeInsets.all(5),
+        decoration: myBoxDecoration,
+        child: Column(children: [
+          MyProperty(
+            name: title,
+            width: (width > 505) ? 475 : width-30,
+            buttonName: buttonName,
+            onButtonPressed: onButtonPressed,
+          ),
+          const SizedBox(height: 5,),
+          const Divider(height: 0, color: MyColors.border,),
+          const SizedBox(height: 5,),
+          for(int i = 0; i < propertyList.length; i++)...{
+            propertyList[i],
+            if(i < propertyList.length-1)...{
+              const SizedBox(height: 2.5,),
+            }
+          },
+        ],),
+      )
+      
+    );
+  }
+
+  Widget nodeSetting(bool isAdd, double width) {
+    double propWidth = (width > 505) ? 100 : (width-30-75-4)/4;
+    double labelWidth = 75;
+
+    List<MyProperty> propertyList(Node node) {
+      MyProperty prop2_1(Node node) {
+        return MyProperty(
+          name: "X",
+          labelAlignment: Alignment.centerRight,
+          width: propWidth,
+          boolValue: node.constXYR[0],
+          onChangedBool: (value) {
+            setState(() {
+              node.constXYR[0] = value;
+            });
+          },
+        );
+      }
+      MyProperty prop2_2(Node node) {
+        return MyProperty(
+          name: "Y",
+          labelAlignment: Alignment.centerRight,
+          width: propWidth,
+          boolValue: node.constXYR[1],
+          onChangedBool: (value) {
+            setState(() {
+              node.constXYR[1] = value;
+            });
+          },
+        );
+      }
+      MyProperty prop2_3(Node node) {
+        return MyProperty(
+          name: "回転",
+          labelAlignment: Alignment.centerRight,
+          width: propWidth,
+          boolValue: node.constXYR[2],
+          onChangedBool: (value) {
+            setState(() {
+              node.constXYR[2] = value;
+            });
+          },
+        );
+      }
+      MyProperty prop2_4(Node node) {
+        return MyProperty(
+          name: "ヒンジ",
+          labelAlignment: Alignment.centerRight,
+          width: propWidth,
+          boolValue: node.constXYR[3],
+          onChangedBool: (value) {
+            setState(() {
+              node.constXYR[3] = value;
+            });
+          },
+        );
+      }
+      MyProperty prop3_1(Node node) {
+        return MyProperty(
+          name: "鉛直",
+          labelAlignment: Alignment.centerRight,
+          width: propWidth*2,
+          filledWidth: 75,
+          doubleValue: (node.loadXY[1] != 0.0) ? node.loadXY[1] : null,
+          onChangedDouble: (value) {
+            node.loadXY[1] = value;
+          },
+        );
+      }
+      MyProperty prop3_2(Node node) {
+        return MyProperty(
+          name: "モーメント",
+          labelAlignment: Alignment.centerRight,
+          width: propWidth*2,
+          filledWidth: 75,
+          doubleValue: (node.loadXY[2] != 0.0) ? node.loadXY[2] : null,
+          onChangedDouble: (value) {
+            node.loadXY[2] = value;
+          },
+        );
+      }
+
       return [
-        MySettingItem(
-          titleName: "座標",
+        MyProperty(
+          name: "座標",
+          labelWidth: labelWidth,
           children: [
-            MySettingTextField(
-              name: "x", 
-              text: node.pos.dx.toString(), 
-              onChanged: (value){
-                if(double.tryParse(value) != null){
-                  node.pos = Offset(double.parse(value), node.pos.dy);
-                }
-              }
-            ),
+            MyProperty(
+              name: "X",
+              labelAlignment: Alignment.centerRight,
+              width: propWidth*2,
+              filledWidth: 75,
+              doubleValue: node.pos.dx,
+              onChangedDouble: (value) {
+                node.pos = Offset(value, node.pos.dy);
+              },
+            )
           ],
         ),
-        MySettingItem(
-          titleName: "拘束",
+        MyProperty(
+          name: "拘束",
+          labelWidth: labelWidth,
           children: [
-            MySettingCheckbox(
-              name: "x", 
-              value: node.constXYR[0], 
-              onChanged: (value){
-                setState(() {
-                  node.constXYR[0] = value;
-                });
-              }
-            ),
-            MySettingCheckbox(
-              name: "y", 
-              value: node.constXYR[1],
-              onChanged: (value){
-                setState(() {
-                  node.constXYR[1] = value;
-                });
-              }
-            ),
-            MySettingCheckbox(
-              name: "回転", 
-              value: node.constXYR[2],
-              onChanged: (value){
-                setState(() {
-                  node.constXYR[2] = value;
-                });
-              }
-            ),
-            MySettingCheckbox(
-              name: "ヒンジ", 
-              value: node.constXYR[3],
-              onChanged: (value){
-                setState(() {
-                  node.constXYR[3] = value;
-                });
-              }
-            ),
+            prop2_1(node),
+            prop2_2(node),
+            prop2_3(node),
+            prop2_4(node),
           ],
         ),
-        MySettingItem(
-          titleName: "集中荷重",
+        MyProperty(
+          name: "集中荷重",
+          labelWidth: labelWidth,
           children: [
-            MySettingTextField(
-              name: "鉛直", 
-              text: node.loadXY[1].toString(), 
-              onChanged: (value){
-                if(double.tryParse(value) != null){
-                  node.loadXY[1] = double.parse(value);
-                }
-              }
-            ),
-            MySettingTextField(
-              name: "モーメント", 
-              text: node.loadXY[2].toString(), 
-              onChanged: (value){
-                if(double.tryParse(value) != null){
-                  node.loadXY[2] = double.parse(value);
-                }
-              }
-            ),
+            prop3_1(node),
+            prop3_2(node),
           ],
         ),
       ];
@@ -257,99 +345,109 @@ class _PageBeamState extends State<PageBeam> {
 
     if(isAdd){
       // 追加時
-      return MySetting(
-        titleName: "No.${data.node!.number+1}",
-        buttonName: "追加",
-        onPressed: () {
+      return settingPC(
+        propertyList(data.node!), 
+        "No. ${data.node!.number+1}", 
+        "追加", 
+        (){
           setState(() {
             data.addNode();
             data.initSelect();
           });
         },
-        children: items(data.node!),
+        width
       );
     }
     else{
       // タッチ時
-      return MySetting(
-        titleName: "No.${data.nodeList[data.selectedNumber].number+1}",
-        buttonName: "削除",
-        onPressed: () {
+      return settingPC(
+        propertyList(data.nodeList[data.selectedNumber]), 
+        "No. ${data.nodeList[data.selectedNumber].number+1}", 
+        "削除", 
+        (){
           setState(() {
             data.removeNode(data.selectedNumber);
             data.initSelect();
           });
         },
-        children: items(data.nodeList[data.selectedNumber]),
+        width
       );
     }
   }
 
-  Widget elemSetting(bool isAdd){
-    // 共通部分
-    List<MySettingItem> items(Elem elem){
+  Widget elemSetting(bool isAdd, double width) {
+    double propWidth = (width > 505) ? 100 : (width-30-75-4)/4;
+    List<MyProperty> propertyList(Elem elem) {
       return [
-        MySettingItem(
-          titleName: "節点番号",
+        MyProperty(
+          name: "節点番号",
+          labelWidth: 75,
           children: [
-            MySettingTextField(
-              name: "a", 
-              text: (elem.nodeList[0] != null) ? (elem.nodeList[0]!.number+1).toString() : "", 
-              onChanged: (value){
-                if(int.tryParse(value) != null){
-                  if(int.parse(value)-1 < data.nodeList.length){
-                    elem.nodeList[0] = data.nodeList[int.parse(value)-1];
-                  }
+            MyProperty(
+              name: "a",
+              labelAlignment: Alignment.centerRight,
+              width: propWidth*2,
+              filledWidth: 75,
+              intValue: (elem.nodeList[0] != null) ? (elem.nodeList[0]!.number+1) : null,
+              onChangedInt: (value) {
+                if(value-1 < data.nodeList.length){
+                  elem.nodeList[0] = data.nodeList[value-1];
                 }
-              }
+              },
             ),
-            MySettingTextField(
-              name: "b", 
-              text: (elem.nodeList[1] != null) ? (elem.nodeList[1]!.number+1).toString() : "",
-              onChanged: (value){
-                if(double.tryParse(value) != null){
-                  if(int.parse(value)-1 < data.nodeList.length){
-                    elem.nodeList[1] = data.nodeList[int.parse(value)-1];
-                  }
+            MyProperty(
+              name: "b",
+              labelAlignment: Alignment.centerRight,
+              width: propWidth*2,
+              filledWidth: 75,
+              intValue: (elem.nodeList[1] != null) ? (elem.nodeList[1]!.number+1) : null,
+              onChangedInt: (value) {
+                if(value-1 < data.nodeList.length){
+                  elem.nodeList[1] = data.nodeList[value-1];
                 }
-              }
+              },
+            )
+          ],
+        ),
+        MyProperty(
+          name: "剛性",
+          labelWidth: 75,
+          children: [
+            MyProperty(
+              name: "ヤング率",
+              labelAlignment: Alignment.centerRight,
+              width: propWidth*2,
+              filledWidth: 75,
+              doubleValue: elem.e,
+              onChangedDouble: (value) {
+                elem.e = value;
+              },
+            ),
+            MyProperty(
+              name: "断面二次モーメント",
+              labelAlignment: Alignment.centerRight,
+              width: propWidth*2,
+              filledWidth: 75,
+              doubleValue: elem.v,
+              onChangedDouble: (value) {
+                elem.v = value;
+              },
             ),
           ],
         ),
-        MySettingItem(
-          titleName: "パラメータ",
+        MyProperty(
+          name: "分布荷重",
+          labelWidth: 75,
           children: [
-            MySettingTextField(
-              name: "ヤング率", 
-              text: elem.e.toString(), 
-              onChanged: (value){
-                if(double.tryParse(value) != null){
-                  elem.e = double.parse(value);
-                }
-              }
-            ),
-            MySettingTextField(
-              name: "断面二次モーメント", 
-              text: elem.v.toString(), 
-              onChanged: (value){
-                if(double.tryParse(value) != null){
-                  elem.v = double.parse(value);
-                }
-              }
-            ),
-          ],
-        ),
-        MySettingItem(
-          titleName: "分布荷重",
-          children: [
-            MySettingTextField(
-              name: "鉛直", 
-              text: elem.load.toString(), 
-              onChanged: (value){
-                if(double.tryParse(value) != null){
-                  elem.load = double.parse(value);
-                }
-              }
+            MyProperty(
+              name: "鉛直",
+              labelAlignment: Alignment.centerRight,
+              width: propWidth*2,
+              filledWidth: 75,
+              doubleValue: (elem.load != 0.0) ? elem.load : null,
+              onChangedDouble: (value) {
+                elem.load = value;
+              },
             ),
           ],
         ),
@@ -358,231 +456,167 @@ class _PageBeamState extends State<PageBeam> {
 
     if(isAdd){
       // 追加時
-      return MySetting(
-        titleName: "No.${data.elem!.number+1}",
-        buttonName: "追加",
-        onPressed: () {
+      return settingPC(
+        propertyList(data.elem!), 
+        "No. ${data.elem!.number+1}", 
+        "追加", 
+        (){
           setState(() {
             data.addElem();
+            data.elem!.e = 1;
+            data.elem!.v = 1;
             data.initSelect();
           });
         },
-        children: items(data.elem!),
+        width
       );
     }
     else{
       // タッチ時
-      return MySetting(
-        titleName: "No.${data.elemList[data.selectedNumber].number+1}",
-        buttonName: "削除",
-        onPressed: () {
+      return settingPC(
+        propertyList(data.elemList[data.selectedNumber]), 
+        "No. ${data.elemList[data.selectedNumber].number+1}",
+        "削除", 
+        (){
           setState(() {
             data.removeElem(data.selectedNumber);
             data.initSelect();
           });
         },
-        children: items(data.elemList[data.selectedNumber]),
+        width
       );
     }
   }
 }
 
 class BeamPainter extends CustomPainter {
-  const BeamPainter({required this.data, required this.devTypeNum});
+  const BeamPainter({required this.data, required this.devTypeNum, required this.isSumaho});
 
   final Data data;
   final int devTypeNum;
+  final bool isSumaho;
 
   @override
   void paint(Canvas canvas, Size size) {
+
+    // サイズに関する変数
+    double width = 0;
+    double heigh = 0;
+    Rect rect = Rect.zero; // はりの表示範囲
+    double nodeWidth = 0; // 節点の直径
+    double elemWidth = 0; // 要素の太さ
+
+    // サイズ設定
+    void setSize() {
+      // 要素の太さ
+      elemWidth = rect.width/50;
+      if(elemWidth > 15) {
+        elemWidth = 15;
+      } else if(elemWidth < 6.5) {
+        elemWidth = 6.5;
+      }
+      // 節点の大きさ
+      nodeWidth = elemWidth*0.6;
+    }
+    
     Rect dataRect = data.rect();
-    data.updateCanvasPos(Rect.fromLTRB(250, 100+size.height/10, size.width-150, size.height-100-size.height/10), 1);
     List<Node> nodes = data.allNodeList();
     List<Elem> elems = data.allElemList();
 
-    Paint paint = Paint();
-
-    if(!data.isCalculation){
-      drawElem(elems, true, canvas); // 辺
-      drawConst(nodes, dataRect, canvas, size); // 節点拘束
-      drawPower(nodes, elems, dataRect, data.canvasData, canvas); // 荷重
-      drawNode(nodes, true, canvas); // 節点
-      drawNodeNumber(nodes, true, canvas, size); // 節点番号
+    if (!data.isCalculation) {
+      // キャンバスの広さ
+      if((size.height-size.height/6)*2 > size.width-150){
+        width = size.width-150;
+        heigh = width/2;
+      }else{
+        heigh = size.height-size.height/6;
+        width = heigh*2;
+      }
+      rect = Rect.fromLTRB((size.width-width)/2, (size.height-heigh)/2, size.width-(size.width-width)/2, size.height - (size.height-heigh)/2);
+      setSize();
+      data.updateCanvasPos(rect, 1);
+      _drawElem(elems, true, elemWidth, canvas); // 辺
+      _drawConst(nodes, dataRect, rect, canvas); // 節点拘束
+      _drawPower(nodes, elems, dataRect, data.canvasData, canvas); // 荷重
+      _drawNode(nodes, true, nodeWidth, canvas); // 節点
+      _drawNodeNumber(nodes, true, canvas); // 節点番号
     }
-    else{
-      // 結果
-      if(devTypeNum == 0) // せん断力
-      {
-        paint = Paint()
-          ..color = const Color.fromARGB(255, 0, 0, 0)
-          ..style = PaintingStyle.fill;
-
-        double max = 0.0;
-        double min = 0.0;
-        for(int i = 1; i < data.resultElemList.length; i++){
-          if(max < data.resultElemList[i].result[4]) max = data.resultElemList[i].result[4];
-          if(min > data.resultElemList[i].result[4]) min = data.resultElemList[i].result[4];
-        }
-        double maxAbs = 0.0;
-        double scale = 1.0;
-        if(max.abs() > min.abs()){
-          maxAbs = max.abs();
-        }else{
-          maxAbs = min.abs();
-        }
-        scale = (size.height/data.canvasData.scale/6) / maxAbs;
-        List<double> sList = List.filled(data.resultElemList.length, 0);
-        for(int i = 0; i < data.resultElemList.length; i++){
-          sList[i] = data.resultElemList[i].result[4]*scale;
-        }
-
-        for(int i = 0; i < data.resultElemList.length; i++){
-          Offset topLeft = data.canvasData.dToC(Offset(data.resultElemList[i].nodeList[0]!.afterPos.dx, sList[i]));
-          Offset topRight = data.canvasData.dToC(Offset(data.resultElemList[i].nodeList[1]!.afterPos.dx, sList[i]));
-          Offset bottomRight = data.canvasData.dToC(Offset(data.resultElemList[i].nodeList[1]!.afterPos.dx, 0));
-          paint.color = const Color.fromARGB(255, 153, 194, 228);
-          Path path = Path();
-          path.moveTo(topLeft.dx, topLeft.dy);
-          path.lineTo(topRight.dx, topRight.dy);
-          path.lineTo(topRight.dx, bottomRight.dy);
-          path.lineTo(topLeft.dx, bottomRight.dy);
-          path.close();
-          canvas.drawPath(path, paint);
-          paint.color = Colors.black;
-          canvas.drawLine(topLeft, topRight, paint);
-        }
-
-        drawm(max, min, scale, false, canvas, size);
+    else if(!isSumaho) {
+      // キャンバスの広さ
+      if((size.height-size.height/6)*2 > size.width-300){
+        width = size.width-300;
+        heigh = width/2;
+      }else{
+        heigh = size.height-size.height/6;
+        width = heigh*2;
       }
-      else if(devTypeNum == 1) // 曲げモーメント
-      {
-        paint = Paint()
-          ..color = const Color.fromARGB(255, 0, 0, 0)
-          ..style = PaintingStyle.fill;
-
-        double max = 0.0;
-        double min = 0.0;
-        for(int i = 1; i < data.resultElemList.length; i++){
-          if(max < data.resultElemList[i].result[5]) max = data.resultElemList[i].result[5];
-          if(min > data.resultElemList[i].result[5]) min = data.resultElemList[i].result[5];
-          if(max < data.resultElemList[i].result[6]) max = data.resultElemList[i].result[6];
-          if(min > data.resultElemList[i].result[6]) min = data.resultElemList[i].result[6];
-        }
-        double maxAbs = 0.0;
-        double scale = 1.0;
-        if(max.abs() > min.abs()){
-          maxAbs = max.abs();
-        }else{
-          maxAbs = min.abs();
-        }
-        scale = (size.height/data.canvasData.scale/6) / maxAbs;
-        List<List<double>> mList = List.generate(data.resultElemList.length, (_) => List<double>.filled(2, 0));
-        for(int i = 0; i < data.resultElemList.length; i++){
-          mList[i][0] = data.resultElemList[i].result[5]*scale;
-          mList[i][1] = data.resultElemList[i].result[6]*scale;
-        }
-
-        for(int i = 0; i < data.resultElemList.length; i++){
-          Offset left = Offset(data.resultElemList[i].nodeList[0]!.afterPos.dx, -mList[i][0]);
-          Offset right = Offset(data.resultElemList[i].nodeList[1]!.afterPos.dx, -mList[i][1]);
-          canvas.drawLine(data.canvasData.dToC(left), data.canvasData.dToC(right), paint);
-          Offset topLeft = data.canvasData.dToC(Offset(data.resultElemList[i].nodeList[0]!.afterPos.dx, -mList[i][0]));
-          Offset topRight = data.canvasData.dToC(Offset(data.resultElemList[i].nodeList[1]!.afterPos.dx, -mList[i][1]));
-          Offset bottomRight = data.canvasData.dToC(Offset(data.resultElemList[i].nodeList[1]!.afterPos.dx, 0));
-          paint.color = const Color.fromARGB(255, 222, 171, 167);
-          Path path = Path();
-          path.moveTo(topLeft.dx, topLeft.dy);
-          path.lineTo(topRight.dx, topRight.dy);
-          path.lineTo(topRight.dx, bottomRight.dy);
-          path.lineTo(topLeft.dx, bottomRight.dy);
-          path.close();
-          canvas.drawPath(path, paint);
-          paint.color = Colors.black;
-          canvas.drawLine(topLeft, topRight, paint);
-        }
-
-        drawm(max, min, scale, true, canvas, size);
+      rect = Rect.fromLTRB((size.width-width)/2, (size.height-heigh)/2, size.width-(size.width-width)/2, size.height - (size.height-heigh)/2);
+      setSize();
+      data.updateCanvasPos(rect, 1);
+      (Rect, double, double, double, bool) memory = (Rect.zero,0,0,0,false);
+      if(devTypeNum == 1) {
+        memory = _drawShear(Rect.fromLTRB(rect.left-125, rect.top, rect.right, rect.bottom), canvas); // せん断力
+      } else if(devTypeNum == 2) {
+        memory = _drawMoment(Rect.fromLTRB(rect.left-125, rect.top, rect.right, rect.bottom), canvas);  // 曲げモーメント
       }
-
-      drawElem(data.elemList, false, canvas); // 辺
-
-      if(devTypeNum > 1) {
-        paint = Paint()
-          ..color = const Color.fromARGB(255, 225, 135, 135)
-          ..style = PaintingStyle.fill
-          ..strokeWidth = 10;
-        double max = data.resultNodeList[0].becPos.dy;
-        double min = data.resultNodeList[0].becPos.dy;
-        for(int i = 1; i < data.resultNodeList.length; i++){
-          if(max < data.resultNodeList[i].becPos.dy) max = data.resultNodeList[i].becPos.dy;
-          if(min > data.resultNodeList[i].becPos.dy) min = data.resultNodeList[i].becPos.dy;
-        }
-        double scale = 1.0;
-        if(max.abs() > min.abs()){
-          scale = (size.height/data.canvasData.scale/6) / max.abs();
-        }else{
-          scale = (size.height/data.canvasData.scale/6) / min.abs();
-        }
-        for(int i = 1; i < data.resultNodeList.length; i++){
-          data.resultNodeList[i].afterPos = data.resultNodeList[i].pos + data.resultNodeList[i].becPos*scale;
-        }
-
-        for(int i = 0; i < data.resultElemList.length; i++){
-          canvas.drawLine(data.canvasData.dToC(data.resultElemList[i].nodeList[0]!.afterPos), data.canvasData.dToC(data.resultElemList[i].nodeList[1]!.afterPos), paint);
-        }
+      _drawElem(data.elemList, false, elemWidth, canvas); // 辺
+      if(devTypeNum == 0) {
+        _drawResultElem(Rect.fromLTRB(rect.left, rect.top+rect.height/6, rect.right, rect.bottom-rect.height/6), elemWidth, canvas); // 変形図
       }
-
+      _drawConst(data.nodeList, dataRect, rect, canvas); // 節点拘束
+      _drawPower(data.nodeList, data.elemList, dataRect, data.canvasData, canvas); // 荷重
+      _drawNode(data.nodeList, false, nodeWidth, canvas); // 節点
+      if(devTypeNum == 0) {
+        _drawResultNode(nodeWidth, canvas);
+      }
       
-      drawConst(data.nodeList, dataRect, canvas, size); // 節点拘束
-      drawPower(data.nodeList, data.elemList, dataRect, data.canvasData, canvas); // 荷重
-      drawNode(data.nodeList, false, canvas); // 節点
-
-      if(devTypeNum > 1) {
-        paint = Paint()
-          ..style = PaintingStyle.fill
-          ..strokeWidth = 2;
-        List<Node> leftNodes = [];
-        for(int i = 0; i < data.nodeList.length; i++){
-          leftNodes.add(data.nodeList[i]);
-        }
-        leftNodes.sort((a, b) => a.pos.dx.compareTo(b.pos.dx));
-        for(int i = 0; i < data.nodeList.length; i++){
-          Offset cpos = data.canvasData.dToC(data.resultNodeList[i].afterPos);
-          paint.style = PaintingStyle.fill;
-          if(data.nodeList[i].constXYR[3]){
-            paint.color = const Color.fromARGB(255, 255, 255, 255);
-          }else{
-            paint.color = const Color.fromARGB(255, 79, 79, 79);
-          }
-          canvas.drawCircle(cpos, 9.0, paint);
-          paint.style = PaintingStyle.stroke;
-          paint.color = const Color.fromARGB(255, 0, 0, 0);
-          canvas.drawCircle(cpos, 9.0, paint);
-          if(devTypeNum == 2){
-            Painter().text(canvas, size.width, "v=${data.resultNodeList[i].result[0].toStringAsFixed(5)}", cpos, 20, Colors.black);
-          }else{
-            if(i == data.nodeList.length-1){
-              Painter().text(canvas, size.width, "θ=${data.resultNodeList[i].result[2].toStringAsFixed(5)}", cpos, 20, Colors.black);
-            }else if(i == 0){
-              Painter().text(canvas, size.width, "θ=${data.resultNodeList[i].result[1].toStringAsFixed(5)}", cpos, 20, Colors.black);
-            }else{
-              if(leftNodes[i].constXYR[3]){
-                Painter().text(canvas, size.width, 
-                "θ1=${data.resultNodeList[i].result[1].toStringAsFixed(5)}\nθ2=${data.resultNodeList[i].result[2].toStringAsFixed(5)}", cpos, 20, Colors.black);
-              }else{
-                Painter().text(canvas, size.width, "θ=${data.resultNodeList[i].result[2].toStringAsFixed(5)}", cpos, 20, Colors.black);
-              }
-            }
-          }
-        }
+      double a = rect.height < 300 ? rect.height/5+7.5 : 300/5+7.5;
+      MyPainter.memory(canvas, Rect.fromLTRB(rect.right+a, rect.top, rect.right+a, rect.bottom), memory.$2, memory.$3, memory.$4, memory.$5);
+    }
+    else {
+      // キャンバスの広さ
+      if((size.height/3-50)*2 > size.width-150){
+        width = size.width-150;
+        heigh = width/2;
+      }else{
+        heigh = (size.height/3-50);
+        width = heigh*2;
       }
+      rect = Rect.fromLTRB((size.width-width)/2, size.height/6-heigh/2+25, size.width-(size.width-width)/2, size.height/6+heigh/2+25);
+      setSize();
+      data.updateCanvasPos(rect, 1);
+      _drawElem(data.elemList, false, elemWidth, canvas); // 辺
+      _drawResultElem(Rect.fromLTRB(rect.left, rect.top+rect.height/6, rect.right, rect.bottom-rect.height/6), elemWidth, canvas); // 変形図
+      _drawConst(data.nodeList, dataRect, rect, canvas); // 節点拘束
+      _drawPower(data.nodeList, data.elemList, dataRect, data.canvasData, canvas); // 荷重
+      _drawNode(data.nodeList, false, nodeWidth, canvas); // 節点
+      _drawResultNode(nodeWidth, canvas);
 
-      drawNodeNumber(data.nodeList, false, canvas, size); // 節点番号
+      (Rect, double, double, double, bool) memory = (Rect.zero,0,0,0,false);
+      rect = Rect.fromLTRB((size.width-width)/2, size.height/2-heigh/2, size.width-(size.width-width)/2, size.height/2+heigh/2);
+      data.updateCanvasPos(rect, 1);
+      memory = _drawShear(Rect.fromLTRB(rect.left-75, rect.top, rect.right, rect.bottom), canvas); // せん断力
+      MyPainter.text(canvas, Offset(rect.center.dx-50, rect.bottom-25), "せん断力図", 18, Colors.black, true, 1000);
+      _drawElem(data.elemList, false, elemWidth, canvas); // 辺
+      canvas.drawLine(Offset(rect.left, rect.top), Offset(rect.left, rect.bottom), Paint());
+      canvas.drawLine(Offset(rect.right, rect.top), Offset(rect.right, rect.bottom), Paint());
+      MyPainter.memory(canvas, Rect.fromLTRB(rect.right, rect.top, rect.right, rect.bottom), memory.$2, memory.$3, memory.$4, memory.$5);
+
+      rect = Rect.fromLTRB((size.width-width)/2, size.height/6*5-heigh/2-25, size.width-(size.width-width)/2, size.height/6*5+heigh/2-25);
+      data.updateCanvasPos(rect, 1);
+      memory = _drawMoment(Rect.fromLTRB(rect.left-75, rect.top, rect.right, rect.bottom), canvas); // 曲げモーメント
+      MyPainter.text(canvas, Offset(rect.center.dx-65, rect.bottom-25), "曲げモーメント図", 18, Colors.black, true, 1000);
+      _drawElem(data.elemList, false, elemWidth, canvas); // 辺
+      canvas.drawLine(Offset(rect.left, rect.top), Offset(rect.left, rect.bottom), Paint());
+      canvas.drawLine(Offset(rect.right, rect.top), Offset(rect.right, rect.bottom), Paint());
+      MyPainter.memory(canvas, Rect.fromLTRB(rect.right, rect.top, rect.right, rect.bottom), memory.$2, memory.$3, memory.$4, memory.$5);
     }
   }
 
+
+
   // 節点
-  void drawNode(List<Node> nodes, bool isSelect, Canvas canvas) {
+  void _drawNode(List<Node> nodes, bool isSelect, double width, Canvas canvas) {
     Paint paint = Paint()
       ..strokeWidth = 2;
 
@@ -595,7 +629,7 @@ class BeamPainter extends CustomPainter {
         else{
           paint.color = const Color.fromARGB(255, 79, 79, 79);
         }
-        canvas.drawCircle(nodes[i].canvasPos, 9.0, paint);
+        canvas.drawCircle(nodes[i].canvasPos, width, paint);
 
         paint.style = PaintingStyle.stroke;
         if(nodes[i].isSelect && isSelect){
@@ -603,31 +637,31 @@ class BeamPainter extends CustomPainter {
         }else{
           paint.color = const Color.fromARGB(255, 0, 0, 0);
         }
-        canvas.drawCircle(nodes[i].canvasPos, 9.0, paint);
+        canvas.drawCircle(nodes[i].canvasPos, width, paint);
       }
     }
   }
 
   // 節点番号
-  void drawNodeNumber(List<Node> nodes, bool isSelect, Canvas canvas, Size size) {
+  void _drawNodeNumber(List<Node> nodes, bool isSelect, Canvas canvas) {
     if(nodes.isNotEmpty){
       for(int i = 0; i < nodes.length; i++){
         Offset pos = nodes[i].canvasPos;
         if(nodes[i].isSelect && isSelect){
-          Painter().text(canvas, size.width, (i+1).toString(), Offset(pos.dx - 30, pos.dy - 30), 20, Colors.red);
+          Painter().text(canvas, 100, (i+1).toString(), Offset(pos.dx - 30, pos.dy - 30), 20, Colors.red);
         }else{
-          Painter().text(canvas, size.width, (i+1).toString(), Offset(pos.dx - 30, pos.dy - 30), 20, Colors.black);
+          Painter().text(canvas, 100, (i+1).toString(), Offset(pos.dx - 30, pos.dy - 30), 20, Colors.black);
         }
       }
     }
   }
 
   // 要素
-  void drawElem(List<Elem> elems, bool isSelect, Canvas canvas) {
+  void _drawElem(List<Elem> elems, bool isSelect, double width, Canvas canvas) {
     Paint paint = Paint()
       ..color = const Color.fromARGB(255, 99, 99, 99)
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 10;
+      ..strokeWidth = width;
     if(elems.isNotEmpty){
       for(int i = 0; i < elems.length; i++){
         if(elems[i].nodeList[0] != null && elems[i].nodeList[1] != null){
@@ -645,29 +679,33 @@ class BeamPainter extends CustomPainter {
   }
 
   // 拘束
-  void drawConst(List<Node> nodes, Rect dataRect, Canvas canvas, Size size) {
+  void _drawConst(List<Node> nodes, Rect dataRect, Rect rect, Canvas canvas) {
     Paint paint = Paint()
       ..color = const Color.fromARGB(255, 0, 0, 0)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 2;
 
+    if(rect.height > 300) {
+      rect = Rect.fromLTRB(rect.left, rect.center.dy-150, rect.right, rect.center.dy+150);
+    }
+
     if(nodes.isNotEmpty){
       for(int i = 0; i < nodes.length; i++){
         paint.style = PaintingStyle.fill;
         if(nodes[i].constXYR[0] && nodes[i].constXYR[1] && nodes[i].constXYR[2]){ // 壁
-          if(nodes[i].pos.dx < dataRect.center.dx){
+          if(nodes[i].pos.dx <= dataRect.center.dx){
             Offset cpos = nodes[i].canvasPos;
             paint.color = const Color.fromARGB(255, 181, 181, 181);
-            canvas.drawRect(Rect.fromLTRB(cpos.dx-50, size.height/2-100, cpos.dx, size.height/2+100), paint);
+            canvas.drawRect(Rect.fromLTRB(cpos.dx-rect.height/5, rect.top, cpos.dx, rect.bottom), paint);
             paint.color = Colors.black;
-            canvas.drawLine(Offset(cpos.dx, size.height/2-100), Offset(cpos.dx, size.height/2+100), paint);
+            canvas.drawLine(Offset(cpos.dx, rect.top), Offset(cpos.dx, rect.bottom), paint);
           }
           else{
             Offset cpos = nodes[i].canvasPos;
             paint.color = const Color.fromARGB(255, 181, 181, 181);
-            canvas.drawRect(Rect.fromLTRB(cpos.dx, size.height/2-100, cpos.dx+50, size.height/2+100), paint);
+            canvas.drawRect(Rect.fromLTRB(cpos.dx, rect.top, cpos.dx+rect.height/5, rect.bottom), paint);
             paint.color = Colors.black;
-            canvas.drawLine(Offset(cpos.dx, size.height/2-100), Offset(cpos.dx, size.height/2+100), paint);
+            canvas.drawLine(Offset(cpos.dx, rect.top), Offset(cpos.dx, rect.bottom), paint);
             break;
           }
         }else if(nodes[i].constXYR[1]){ // 三角
@@ -684,15 +722,14 @@ class BeamPainter extends CustomPainter {
             canvas.drawLine(Offset(cpos.dx-20, cpos.dy+30), Offset(cpos.dx+20, cpos.dy+30), paint);
           }
         }
-        canvas.drawCircle(nodes[i].canvasPos, 5, paint);
       }
     }
   }
 
   // 荷重
-  void drawPower(List<Node> nodes, List<Elem> elems, Rect dataRect, CanvasData canvasData, Canvas canvas) {
+  void _drawPower(List<Node> nodes, List<Elem> elems, Rect dataRect, CanvasData canvasData, Canvas canvas) {
     Paint paint = Paint()
-      ..color = const Color.fromARGB(255, 0, 0, 0)
+      ..color = const Color.fromARGB(255, 0, 63, 95)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 3;
     
@@ -708,15 +745,24 @@ class BeamPainter extends CustomPainter {
         }
 
         if(nodes[i].loadXY[2] != 0.0){ // 曲げモーメント
-          paint.style = PaintingStyle.stroke;
-          canvas.drawCircle(pos, 40, paint);
-          paint.style = PaintingStyle.fill;
-          if(nodes[i].loadXY[2] > 0){
-            Painter().arrow(Offset(pos.dx, pos.dy-40), Offset(pos.dx-13, pos.dy-40), 5, const Color.fromARGB(255, 0, 63, 95), canvas);
-            Painter().arrow(Offset(pos.dx, pos.dy+40), Offset(pos.dx+13, pos.dy+40), 5, const Color.fromARGB(255, 0, 63, 95), canvas);
+          if(nodes[i].pos.dx < dataRect.center.dx) {
+            paint.style = PaintingStyle.stroke;
+            canvas.drawArc(Rect.fromCircle(center: pos, radius: 40), pi/3*2, pi/3*2, false, paint);
+            paint.style = PaintingStyle.fill;
+            if(nodes[i].loadXY[2] > 0.0){
+              MyPainter.triangleEquilateral(Offset(pos.dx-19, pos.dy+37), 20, -pi/3*0.8, paint, canvas);
+            }else{
+              MyPainter.triangleEquilateral(Offset(pos.dx-19, pos.dy-37), 20, pi/3*0.8, paint, canvas);
+            }
           }else{
-            Painter().arrow(Offset(pos.dx, pos.dy-40), Offset(pos.dx+13, pos.dy-40), 5, const Color.fromARGB(255, 0, 63, 95), canvas);
-            Painter().arrow(Offset(pos.dx, pos.dy+40), Offset(pos.dx-13, pos.dy+40), 5, const Color.fromARGB(255, 0, 63, 95), canvas);
+            paint.style = PaintingStyle.stroke;
+            canvas.drawArc(Rect.fromCircle(center: pos, radius: 40), -pi/3, pi/3*2, false, paint);
+            paint.style = PaintingStyle.fill;
+            if(nodes[i].loadXY[2] > 0.0){
+              MyPainter.triangleEquilateral(Offset(pos.dx+19, pos.dy-37), 20, pi/3*2.2, paint, canvas);
+            }else{
+              MyPainter.triangleEquilateral(Offset(pos.dx+19, pos.dy+37), 20, -pi/3*2.2, paint, canvas);
+            }
           }
         }
       }
@@ -757,72 +803,190 @@ class BeamPainter extends CustomPainter {
     }
   }
 
-  // メモリ
-  void drawm(double max, double min, double scale, bool reverse, Canvas canvas, Size size) {
+  // 変形後の要素
+  void _drawResultElem(Rect canvasRect, double width, Canvas canvas) {
     Paint paint = Paint()
-      ..color = Colors.black
-      ..strokeWidth = 2.0;
+      ..color = const Color.fromARGB(255, 225, 135, 135)
+      ..style = PaintingStyle.fill
+      ..strokeWidth = width;
+    double max = data.resultNodeList[0].becPos.dy;
+    double min = data.resultNodeList[0].becPos.dy;
+    for(int i = 1; i < data.resultNodeList.length; i++){
+      if(max < data.resultNodeList[i].becPos.dy) max = data.resultNodeList[i].becPos.dy;
+      if(min > data.resultNodeList[i].becPos.dy) min = data.resultNodeList[i].becPos.dy;
+    }
+    double scale = 1.0;
+    if(max.abs() > min.abs()){
+      scale = (canvasRect.height/data.canvasData.scale/2) / max.abs();
+    }else{
+      scale = (canvasRect.height/data.canvasData.scale/2) / min.abs();
+    }
+    for(int i = 0; i < data.resultNodeList.length; i++){
+      data.resultNodeList[i].afterPos = data.resultNodeList[i].pos + data.resultNodeList[i].becPos*scale;
+    }
 
-    double maxAbs = max.abs() > min.abs() ? max.abs() * 2 : min.abs() * 2;
+    for(int i = 0; i < data.resultElemList.length; i++){
+      canvas.drawLine(data.canvasData.dToC(data.resultElemList[i].nodeList[0]!.afterPos), data.canvasData.dToC(data.resultElemList[i].nodeList[1]!.afterPos), paint);
+    }
+  }
 
+  // 変形後の節点
+  void _drawResultNode(double width, Canvas canvas) {
+    Paint paint = Paint()
+      ..style = PaintingStyle.fill
+      ..strokeWidth = 2;
+    List<Node> leftNodes = [];
+    for(int i = 0; i < data.nodeList.length; i++){
+      leftNodes.add(data.nodeList[i]);
+    }
+    leftNodes.sort((a, b) => a.pos.dx.compareTo(b.pos.dx));
+    for(int i = 0; i < data.nodeList.length; i++){
+      Offset cpos = data.canvasData.dToC(data.resultNodeList[i].afterPos);
+      paint.style = PaintingStyle.fill;
+      if(data.nodeList[i].constXYR[3]){
+        paint.color = const Color.fromARGB(255, 255, 255, 255);
+      }else{
+        paint.color = const Color.fromARGB(255, 79, 79, 79);
+      }
+      canvas.drawCircle(cpos, width, paint);
+      paint.style = PaintingStyle.stroke;
+      paint.color = const Color.fromARGB(255, 0, 0, 0);
+      canvas.drawCircle(cpos, width, paint);
+
+      // 結果の数値
+      String text = "v=${MyPainter.doubleToString(data.resultNodeList[i].result[0], 3)}\n";
+      if(i == data.nodeList.length-1){
+        text += "θ=${MyPainter.doubleToString(data.resultNodeList[i].result[2], 3)}";
+      }else if(i == 0){
+        text += "θ=${MyPainter.doubleToString(data.resultNodeList[i].result[1], 3)}";
+      }else{
+        if(leftNodes[i].constXYR[3]){
+          text += "θ1=${MyPainter.doubleToString(data.resultNodeList[i].result[1], 3)}\n}";
+          text += "θ2=${MyPainter.doubleToString(data.resultNodeList[i].result[2], 3)}";
+        }else{
+          text += "θ=${MyPainter.doubleToString(data.resultNodeList[i].result[2], 3)}";
+        }
+      }
+      MyPainter.text(canvas, Offset(cpos.dx-10, cpos.dy), text, 16, Colors.black, true, 1000, );
+    }
+  }
+
+  // せん断力図
+  (Rect rect, double max, double min, double value, bool isReverse) _drawShear(Rect canvasRect, Canvas canvas) {
+    Paint paint = Paint()
+      ..color = const Color.fromARGB(255, 0, 0, 0)
+      ..style = PaintingStyle.fill;
+
+    double max = 0.0;
+    double min = 0.0;
+    for(int i = 1; i < data.resultElemList.length; i++){
+      if(max < data.resultElemList[i].result[4]) max = data.resultElemList[i].result[4];
+      if(min > data.resultElemList[i].result[4]) min = data.resultElemList[i].result[4];
+    }
+
+    if(max == 0.0 && min == 0.0){
+      var me = _memoryMaxAbs(1, -1);
+      return (Rect.fromLTRB(canvasRect.left-50, canvasRect.top, canvasRect.left+100, canvasRect.bottom), me.$1, -me.$1, me.$2, false); 
+    }
+
+    var me = _memoryMaxAbs(max, min);
+    double scale = (canvasRect.height/data.canvasData.scale/2) / me.$1;
+    List<double> sList = List.filled(data.resultElemList.length, 0);
+    for(int i = 0; i < data.resultElemList.length; i++){
+      sList[i] = data.resultElemList[i].result[4]*scale;
+    }
+
+
+    for(int i = 0; i < data.resultElemList.length; i++){
+      Offset topLeft = data.canvasData.dToC(Offset(data.resultElemList[i].nodeList[0]!.afterPos.dx, sList[i]));
+      Offset topRight = data.canvasData.dToC(Offset(data.resultElemList[i].nodeList[1]!.afterPos.dx, sList[i]));
+      Offset bottomRight = data.canvasData.dToC(Offset(data.resultElemList[i].nodeList[1]!.afterPos.dx, 0));
+      paint.color = const Color.fromARGB(255, 153, 194, 228);
+      Path path = Path();
+      path.moveTo(topLeft.dx, topLeft.dy);
+      path.lineTo(topRight.dx, topRight.dy);
+      path.lineTo(topRight.dx, bottomRight.dy);
+      path.lineTo(topLeft.dx, bottomRight.dy);
+      path.close();
+      canvas.drawPath(path, paint);
+      paint.color = Colors.black;
+      canvas.drawLine(topLeft, topRight, paint);
+    }
+
+    return (Rect.fromLTRB(canvasRect.left-50, canvasRect.top, canvasRect.left+100, canvasRect.bottom), me.$1, -me.$1, me.$2, false);
+  }
+
+  // 曲げモーメント図
+  (Rect rect, double max, double min, double value, bool isReverse) _drawMoment(Rect canvasRect, Canvas canvas) {
+    Paint paint = Paint()
+      ..color = const Color.fromARGB(255, 0, 0, 0)
+      ..style = PaintingStyle.fill;
+
+    double max = 0.0;
+    double min = 0.0;
+    for(int i = 1; i < data.resultElemList.length; i++){
+      if(max < data.resultElemList[i].result[5]) max = data.resultElemList[i].result[5];
+      if(min > data.resultElemList[i].result[5]) min = data.resultElemList[i].result[5];
+      if(max < data.resultElemList[i].result[6]) max = data.resultElemList[i].result[6];
+      if(min > data.resultElemList[i].result[6]) min = data.resultElemList[i].result[6];
+    }
+    var me = _memoryMaxAbs(max, min);
+    double scale = (canvasRect.height/data.canvasData.scale/2) / me.$1;
+    List<List<double>> mList = List.generate(data.resultElemList.length, (_) => List<double>.filled(2, 0));
+    for(int i = 0; i < data.resultElemList.length; i++){
+      mList[i][0] = data.resultElemList[i].result[5]*scale;
+      mList[i][1] = data.resultElemList[i].result[6]*scale;
+    }
+
+    for(int i = 0; i < data.resultElemList.length; i++){
+      Offset left = Offset(data.resultElemList[i].nodeList[0]!.afterPos.dx, -mList[i][0]);
+      Offset right = Offset(data.resultElemList[i].nodeList[1]!.afterPos.dx, -mList[i][1]);
+      canvas.drawLine(data.canvasData.dToC(left), data.canvasData.dToC(right), paint);
+      Offset topLeft = data.canvasData.dToC(Offset(data.resultElemList[i].nodeList[0]!.afterPos.dx, -mList[i][0]));
+      Offset topRight = data.canvasData.dToC(Offset(data.resultElemList[i].nodeList[1]!.afterPos.dx, -mList[i][1]));
+      Offset bottomRight = data.canvasData.dToC(Offset(data.resultElemList[i].nodeList[1]!.afterPos.dx, 0));
+      paint.color = const Color.fromARGB(255, 222, 171, 167);
+      Path path = Path();
+      path.moveTo(topLeft.dx, topLeft.dy);
+      path.lineTo(topRight.dx, topRight.dy);
+      path.lineTo(topRight.dx, bottomRight.dy);
+      path.lineTo(topLeft.dx, bottomRight.dy);
+      path.close();
+      canvas.drawPath(path, paint);
+      paint.color = Colors.black;
+      canvas.drawLine(topLeft, topRight, paint);
+    }
+
+    return (Rect.fromLTRB(canvasRect.left-50, canvasRect.top, canvasRect.left+100, canvasRect.bottom), me.$1, -me.$1, me.$2, true);
+  }
+
+  (double maxAbs, double nextValue) _memoryMaxAbs(double max, double min) {
+    // 絶対値の最大値を取得
+    double maxAbs = max.abs() > min.abs() ? max.abs() : min.abs();
+
+    // 絶対値に応じた拡大率を計算
     double digitScale = 1.0;
-    if(maxAbs > 10.0){
-      while(maxAbs > 10.0){
+    if (maxAbs > 10.0) {
+      while (maxAbs > 10.0) {
         maxAbs /= 10.0;
         digitScale /= 10.0;
       }
-    }else if(maxAbs < 1.0){
-      while(maxAbs < 1.0){
+    } else if (maxAbs < 1.0 && maxAbs > 0) {
+      while (maxAbs < 1.0) {
         maxAbs *= 10.0;
         digitScale *= 10.0;
       }
     }
 
-    double nextValue = 1.0;
-    if(maxAbs < 1.25){
-      maxAbs = 1.0;
-      nextValue = 0.25;
-    }else if(maxAbs < 1.5){
-      maxAbs = 1.25;
-      nextValue = 0.25;
-    }else if(maxAbs < 2.0){
-      maxAbs = 1.5;
-      nextValue = 0.5;
-    }else if(maxAbs < 5.0){
-      maxAbs = maxAbs.floorToDouble();
-      nextValue = 0.5;
-    }else{
-      maxAbs = maxAbs.floorToDouble();
-      nextValue = 1.0;
-    }
+    int maxAbsInt = maxAbs.toInt()+1;
+    maxAbs = maxAbsInt.toDouble();
 
     maxAbs /= digitScale;
-    nextValue /= digitScale;
 
-    // 線を描く
-    Offset top = data.canvasData.dToC(Offset(0, maxAbs * scale));
-    Offset bottom = data.canvasData.dToC(Offset(0, -maxAbs * scale));
-    canvas.drawLine(Offset(80, top.dy), Offset(80, bottom.dy), paint);
+    return (maxAbs, maxAbs/2);
+  } 
 
-    for (double value = -maxAbs; value <= maxAbs; value += nextValue) {
-      if(value.abs() < 1/(digitScale*10000)){
-        value = 0.0;
-      }
-      top = data.canvasData.dToC(Offset(0, value * scale));
-      canvas.drawLine(Offset(70, top.dy), Offset(90, top.dy), paint);
-      String label = "";
-      if(maxAbs >= 10){
-        label = reverse ? (-value).toStringAsFixed(0) : value.toStringAsFixed(0);
-      }else if(maxAbs >= 0.1){
-        label = reverse ? (-value).toStringAsFixed(2) : value.toStringAsFixed(2);
-      }else{
-        label = reverse ? (-value).toStringAsExponential(1) : value.toStringAsExponential(1);
-      }
-      Painter().text(canvas, size.width, label, Offset(100, top.dy - 15), 20, Colors.black);
-    }
-  }
 
-  
   @override
   bool shouldRepaint(covariant BeamPainter oldDelegate) {
     return false;
