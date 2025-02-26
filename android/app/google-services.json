@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "508074917980",
+    "project_id": "kozo-a6926",
+    "storage_bucket": "kozo-a6926.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:508074917980:android:c28e975f083cc8164f6699",
+        "android_client_info": {
+          "package_name": "com.example.kozo"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDTljgQhJkopBaj9PcvvZI1GfsTFItGZzQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:508074917980:android:8cd59685ef39029b4f6699",
+        "android_client_info": {
+          "package_name": "com.example.test"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDTljgQhJkopBaj9PcvvZI1GfsTFItGZzQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

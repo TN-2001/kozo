@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:kozo/components/decorations.dart';
+import 'package:kozo/components/my_decorations.dart';
 
 class MyAlign extends StatelessWidget {
   const MyAlign({
@@ -55,32 +55,64 @@ class MyAlign extends StatelessWidget {
 }
 
 class MyScaffold extends StatelessWidget {
-  const MyScaffold({super.key, this.header, this.body});
+  const MyScaffold({super.key, this.header, this.body, this.drawer, this.scaffoldKey});
 
-  final Widget? header, body;
+  final Widget? header;
+  final Widget? body;
+  final Widget? drawer;
+  final GlobalKey<ScaffoldState>? scaffoldKey; // Drawer表示用のキー
 
   @override
   Widget build(BuildContext context) {
-    return Expanded(
-      child: Column(
-        children: [
-          if(header != null)...{
-            header!,
-            const Divider(height: 0, color: MyColors.border,),
-          },
-          Expanded(
-            child: body ?? const SizedBox(),
-          )
-        ],
-      )
-    );
+    Widget bo(){
+      return SafeArea(
+        child: Container(
+          color: Colors.white,
+          child: Column(
+            children: [
+              if(header != null)...{
+                header!,
+                const Divider(height: 1, color: MyColors.border,),
+              },
+              Expanded(
+                child: body ?? const SizedBox(),
+              )
+            ],
+          ),
+        )
+      );
+    }
+
+    if(drawer != null){
+      return Scaffold(
+        key: scaffoldKey,
+
+        backgroundColor: const Color.fromARGB(255, 0, 0, 0),
+
+        drawer: SafeArea(child: drawer!),
+
+        body: bo(),
+      );
+    }else{
+      return Scaffold(
+        key: scaffoldKey,
+
+        backgroundColor: const Color.fromARGB(255, 0, 0, 0),
+
+        body: bo(),
+      );
+    }
   }
 }
 
 class MyHeader extends StatelessWidget {
-  const MyHeader({super.key, required this.children,});
+  const MyHeader({super.key, this.center, this.left, this.right, 
+    this.isBorder = false});
 
-  final List<Widget> children;
+  final List<Widget>? center;
+  final List<Widget>? left;
+  final List<Widget>? right;
+  final bool isBorder;
 
   @override
   Widget build(BuildContext context) {
@@ -92,20 +124,61 @@ class MyHeader extends StatelessWidget {
       child: Row(
         children: [
           const SizedBox(width: 5,),
-          for(int i = 0; i < children.length; i++)...{
-            // 要素
-            children[i],
-            if(i < children.length-1)...{
+
+          if(left != null)...{
+            for(int i = 0; i < left!.length; i++)...{
+              // 要素
+              left![i],
               // 要素間のライン
               Container(
                 margin: const EdgeInsets.only(
                   left: 5,
                   right: 5,
                 ),
-                child: const VerticalDivider(width: 0, color: MyColors.border,),
+                child: isBorder ? const VerticalDivider(width: 1, color: MyColors.border,) : null,
               ),
             },
           },
+          
+          const Expanded(child: SizedBox(),),
+          if(center != null)...{
+            for(int i = 0; i < center!.length; i++)...{
+              // 要素
+              center![i],
+              // 要素間のライン
+              if(i < center!.length-1)...{
+                Container(
+                  margin: const EdgeInsets.only(
+                    left: 5,
+                    right: 5,
+                  ),
+                  child: isBorder ? const VerticalDivider(width: 1, color: MyColors.border,) : null,
+                ),
+              },
+            },
+          },
+          const Expanded(child: SizedBox(),),
+
+          if(right != null)...{
+            Align(
+              alignment: Alignment.centerRight,
+              child: Row(children: [
+                for(int i = 0; i < right!.length; i++)...{
+                  // 要素間のライン
+                  Container(
+                    margin: const EdgeInsets.only(
+                      left: 5,
+                      right: 5,
+                    ),
+                    child: isBorder ? const VerticalDivider(width: 1, color: MyColors.border,) : null,
+                  ),
+                  // 要素
+                  right![i],
+                },
+              ],)
+            )
+          },
+
           const SizedBox(width: 5,),
         ],
       ),
@@ -114,23 +187,37 @@ class MyHeader extends StatelessWidget {
 }
 
 class MyDrawer extends Drawer {
-  const MyDrawer({super.key, required this.itemList, required this.onTap});
+  const MyDrawer({super.key, this.title, required this.itemList, required this.onTap});
 
+  final String? title; 
   final List<String> itemList;
   final void Function(int number) onTap;
 
   @override
   Widget build(BuildContext context) {
     return Drawer(
-      width: 200,
       backgroundColor: Colors.white,
       // ウィジェットの形
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.zero,
       ),
+      
       // 要素
       child: ListView(
         children: <Widget>[
+          if(title != null)...{
+            SizedBox(
+              height: 50,
+              width: double.infinity,
+              child: Container(
+                alignment: Alignment.centerLeft,
+                padding: const EdgeInsets.only(left: 15, right: 15),
+                child: Text(title!, style: const TextStyle(fontSize: 20),),
+              ),
+            ),
+            const Divider(height: 0, color: MyColors.border,),
+          },
+
           for(int i = 0; i < itemList.length; i++)...{
             ListTile(
               title: Text(itemList[i]),
@@ -146,26 +233,31 @@ class MyDrawer extends Drawer {
 }
 
 class MyIconButton extends StatelessWidget {
-  const MyIconButton({super.key, required this.icon, required this.onPressed});
+  const MyIconButton({super.key, required this.icon, this.message, required this.onPressed});
 
   final IconData icon;
   final void Function() onPressed;
+  final String? message;
 
   @override
   Widget build(BuildContext context) {
-    return IconButton(
-      onPressed: onPressed,
-      icon: Icon(icon),
+    return Tooltip(
+      message: message ?? "",
+      child: IconButton(
+        onPressed: onPressed,
+        icon: Icon(icon),
+      )
     );
   }
 }
 
 class MyIconToggleButtons extends StatelessWidget {
-  const MyIconToggleButtons({super.key, required this.icons, required this.value, required this.onPressed});
+  const MyIconToggleButtons({super.key, required this.icons, this.messages, required this.value, required this.onPressed,});
 
   final int value;
   final List<IconData> icons;
   final void Function(int value) onPressed;
+  final List<String>? messages;
 
   @override
   Widget build(BuildContext context) {
@@ -184,7 +276,10 @@ class MyIconToggleButtons extends StatelessWidget {
       onPressed: onPressed,
       children: [
         for(int i = 0; i < icons.length; i++)...{
-          Icon(icons[i]),
+          Tooltip(
+            message: messages != null ? messages![i] : "",
+            child: Icon(icons[i]),
+          )
         }
       ],
     );

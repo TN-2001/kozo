@@ -1,27 +1,31 @@
 {
-  "hosting": {
-    "public": "build/web",
-    "ignore": [
-      "firebase.json",
-      "**/.*",
-      "**/node_modules/**"
-    ],
-    "rewrites": [
-      {
-        "source": "**",
-        "destination": "/index.html"
-      }
-    ],
-    "headers": [
-      { 
-        "source" : "**", 
-        "headers" : [
-          { 
-            "key" : "Cache-Control", 
-            "value" : "no-cache, no-store, must-revalidate"
-          }
-        ] 
-      }
-    ]
-  }
+    "hosting":{
+        "public":"build/web",
+        "ignore":["firebase.json","**/.*","**/node_modules/**"],
+        "rewrites":[{"source":"**","destination":"/index.html"}],
+        "headers":[{"source":"**","headers":[{"key":"Cache-Control","value":"no-cache, no-store, must-revalidate"}]}]
+    },
+    "flutter":{
+        "platforms":{
+            "android":{
+                "default":{
+                    "projectId":"kozo-a6926",
+                    "appId":"1:508074917980:android:c28e975f083cc8164f6699",
+                    "fileOutput":"android/app/google-services.json"
+                }
+            },
+            "dart":{
+                "lib/firebase_options.dart":{
+                    "projectId":"kozo-a6926",
+                    "configurations":{
+                        "android":"1:508074917980:android:c28e975f083cc8164f6699",
+                        "ios":"1:508074917980:ios:bae5a487998ae3fb4f6699",
+                        "macos":"1:508074917980:ios:bae5a487998ae3fb4f6699",
+                        "web":"1:508074917980:web:00dc8da5e564f6864f6699",
+                        "windows":"1:508074917980:web:fd25119c3b0614f64f6699"
+                    }
+                }
+            }
+        }
+    }
 }

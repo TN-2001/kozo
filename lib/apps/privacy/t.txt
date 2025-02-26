@@ -1,0 +1,31 @@
+      // body: Container(
+      //   color: Colors.white,
+      //   child: ListView(
+      //     children: [
+      //       Align(
+      //         child: ConstrainedBox(
+      //           constraints: const BoxConstraints(
+      //             maxWidth: 1000,
+      //           ),
+      //           child: Container(
+      //             padding: const EdgeInsets.all(30),
+      //             child: const SizedBox(
+      //               width: double.infinity,
+      //               child: Column(
+      //                 crossAxisAlignment: CrossAxisAlignment.start,
+      //                 children: [
+      //                   Text("プレイバシーポリシー", style: TextStyle(fontSize: 32),),
+      //                   Text("\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n"),
+      //                   Text("プレイバシーポリシー"),
+      //                   Text("\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n"),
+      //                   Text("プレイバシーポリシー"),
+      //                   Text("\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n"),
+      //                 ],
+      //               ),
+      //             ),
+      //           ),
+      //         ),
+      //       )
+      //     ],
+      //   ),
+      // ),

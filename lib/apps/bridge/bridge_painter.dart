@@ -1,159 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:kozo/components/painter.dart';
-import 'package:kozo/components/widgets.dart';
-import 'package:kozo/models/data.dart';
+import 'package:kozo/apps/bridge/bridge_data.dart';
+import 'package:kozo/components/my_painter.dart';
 
-class PageGrid extends StatefulWidget {
-  const PageGrid({super.key, required this.scaffoldKey});
+class BridgePainter extends CustomPainter {
+  const BridgePainter({required this.data});
 
-  final GlobalKey<ScaffoldState> scaffoldKey;
-
-  @override
-  State<PageGrid> createState() => _PageGridState();
-}
-
-class _PageGridState extends State<PageGrid> {
-  late GlobalKey<ScaffoldState> scaffoldKey; // メニュー用キー
-  late Data data; // データ
-  static List<String> mathTpeList = ["中央荷重", "分布荷重", "自重"];
-  static List<String> devTypeXYList = 
-    ["X方向応力","Y方向応力","せん断応力","最大主応力","最小主応力","X方向ひずみ","y方向ひずみ","せん断ひずみ","なし"];
-  int toolNum = 0, devTypeNum = 0;
-
-  @override
-  void initState() {
-    super.initState();
-
-    scaffoldKey = widget.scaffoldKey;
-    data = Data(onDebug: (value){});
-    data.elemNode = 4;
-    int countX = 70;
-    int countY = 25;
-    for(int i = 0; i <= countY; i++){
-      for(int j = 0; j <= countX; j++){
-        Node node = Node();
-        node.pos = Offset(j.toDouble(), i.toDouble());
-        data.nodeList.add(node);
-      }
-    }
-    for(int i = 0; i < countY; i++){
-      for(int j = 0; j < countX; j++){
-        Elem elem = Elem();
-        elem.nodeList = [data.nodeList[i*(countX+1)+j],data.nodeList[i*(countX+1)+j+1],data.nodeList[(i+1)*(countX+1)+j+1],data.nodeList[(i+1)*(countX+1)+j]];
-        data.elemList.add(elem);
-      }
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return MyScaffold (
-      // ヘッダーメニュー
-      header: MyHeader(
-        children: [
-          //メニューボタン
-          MyIconButton(
-            icon: Icons.menu, 
-            onPressed: (){
-              scaffoldKey.currentState!.openDrawer();
-            },
-          ),
-          if(!data.isCalculation)...{
-            // ツールメニュー
-            MyIconToggleButtons(
-              icons: const [Icons.edit, Icons.edit_outlined], 
-              value: toolNum, 
-              onPressed: (value){
-                setState(() {
-                  toolNum = value;
-                });
-              }
-            ),
-            // 荷重タイプ
-            MyMenuDropdown(
-              items: mathTpeList,
-              value: data.powerType,
-              onPressed: (value){
-                setState(() {
-                  data.powerType = value;
-                });
-              },
-            ),
-          },
-          const Expanded(child: SizedBox()),
-          if(!data.isCalculation)...{
-            // 解析開始ボタン
-            MyIconButton(
-              icon: Icons.play_arrow,
-              onPressed: (){
-                setState(() {
-                  data.calculation(0);
-                  devTypeNum = 0;
-                });
-              },
-            ),
-          }else...{
-            // 解析結果選択
-            MyMenuDropdown(
-              items: devTypeXYList,
-              value: devTypeNum,
-              onPressed: (value){
-                devTypeNum = value;
-                setState(() {
-                  data.selectResult(value);
-                });
-              },
-            ),
-            // 再開ボタン
-            MyIconButton(
-              icon: Icons.restart_alt,
-              onPressed: (){
-                setState(() {
-                  data.resetCalculation();
-                });
-              },
-            ),
-          }
-        ]
-      ),
-
-      // メインビュー
-      body: MyCustomPaint(
-        onTap: (position) {
-          if(data.isCalculation){
-            setState(() {
-              data.selectElem(position,0);
-              if(data.selectedNumber >= 0){
-                data.selectedNumber = data.selectedNumber;
-              }
-            });
-          }
-        },
-        onDrag: (position) {
-          if(!data.isCalculation){
-            setState(() {
-              data.selectElem(position,0);
-              if(data.selectedNumber >= 0){
-                if(toolNum == 0 && data.elemList[data.selectedNumber].e < 1){
-                  data.elemList[data.selectedNumber].e = 1;
-                }
-                else if(toolNum == 1 && data.elemList[data.selectedNumber].e > 0){
-                  data.elemList[data.selectedNumber].e = 0;
-                }
-              }
-            });
-          }
-        },
-        painter: GridPainter(data: data),
-      ),
-    );
-  }
-}
-
-class GridPainter extends CustomPainter {
-  const GridPainter({required this.data});
-
-  final Data data;
+  final BridgeData data;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -253,15 +105,15 @@ class GridPainter extends CustomPainter {
         paint.strokeWidth = 3.0;
         for(int i = 34; i < 37; i++){
           Offset pos = data.nodeList[i].canvasPos;
-          Painter().arrow(pos, Offset(pos.dx, pos.dy+data.canvasData.scale*1.5), 3, const Color.fromARGB(255, 0, 63, 95), canvas);
+          MyPainter.arrow(pos, Offset(pos.dx, pos.dy+data.canvasData.scale*1.5), 3, const Color.fromARGB(255, 0, 63, 95), canvas);
         }
       }else if(data.powerType == 1){ // 分布荷重
-        paint.color = const Color.fromARGB(255, 0, 0, 0);
+        paint.color = const Color.fromARGB(255, 0, 63, 95);
         paint.style = PaintingStyle.fill;
         paint.strokeWidth = 3.0;
         for(int i = 2; i < 69; i += 3){
           Offset pos = data.nodeList[i].canvasPos;
-          Painter().arrow(pos, Offset(pos.dx, pos.dy+data.canvasData.scale*1.5), 3, const Color.fromARGB(255, 0, 63, 95), canvas);
+          MyPainter.arrow(pos, Offset(pos.dx, pos.dy+data.canvasData.scale*1.5), 3, const Color.fromARGB(255, 0, 63, 95), canvas);
         }
         Offset pos1 = data.nodeList[2].canvasPos;
         Offset pos2 = data.nodeList[68].canvasPos;
@@ -276,7 +128,7 @@ class GridPainter extends CustomPainter {
       for(int i = 0; i < data.elemList.length; i++){
         if(data.elemList[i].e > 0){
           if(data.resultMax != 0 || data.resultMin != 0){
-            paint.color = Painter().getColor((data.resultList[i] - data.resultMin) / (data.resultMax - data.resultMin) * 100);
+            paint.color = MyPainter.getColor((data.resultList[i] - data.resultMin) / (data.resultMax - data.resultMin) * 100);
           }
 
           final path = Path();
@@ -317,16 +169,40 @@ class GridPainter extends CustomPainter {
       }
 
       // 虹色
-      Painter().rainbowBand(canvas, Offset(size.width - 80, 50), Offset(size.width - 120, size.height - 50), 50);
+      if(size.width > size.height){
+        Rect cRect = Rect.fromLTRB(size.width - 85, 50, size.width - 60, size.height - 50);
+        if(cRect.height > 500){
+          cRect = Rect.fromLTRB(cRect.left, size.height/2-250, cRect.right, size.height/2+250);
+        }
+        // 虹色
+        MyPainter.rainbowBand(canvas, cRect, 50);
 
-      // 最大最小
-      Painter().text(canvas, size.width, data.resultMax.toStringAsFixed(5), Offset(size.width - 75, 40), 16, Colors.black);
-      Painter().text(canvas, size.width, data.resultMin.toStringAsFixed(5), Offset(size.width - 75, size.height - 60), 16, Colors.black);
+        // 最大最小
+        MyPainter.text(canvas, Offset(cRect.right+5, cRect.top-10), 
+          MyPainter.doubleToString(data.resultMax, 3), 14, Colors.black, false, size.width);
+        MyPainter.text(canvas, Offset(cRect.right+5, cRect.bottom-10), 
+          MyPainter.doubleToString(data.resultMin, 3), 14, Colors.black, false, size.width);
+      }else{
+        Rect cRect = Rect.fromLTRB(50, size.height - 75, size.width - 50, size.height - 50);
+        if(cRect.width > 500){
+          cRect = Rect.fromLTRB(size.width/2-250, cRect.top, size.width/2+250, cRect .bottom);
+        }
+        // 虹色
+        MyPainter.rainbowBand(canvas, cRect, 50);
+
+        // 最大最小
+        MyPainter.text(canvas, Offset(cRect.right-20, cRect.bottom), 
+          MyPainter.doubleToString(data.resultMax, 3), 14, Colors.black, false, size.width);
+        MyPainter.text(canvas, Offset(cRect.left-20, cRect.bottom), 
+          MyPainter.doubleToString(data.resultMin, 3), 14, Colors.black, false, size.width);
+      }
+
     
       // 選択
       if(data.selectedNumber >= 0){
         if(data.elemList[data.selectedNumber].e > 0){
-          Painter().text(canvas, size.width, data.resultList[data.selectedNumber].toStringAsFixed(5), data.elemList[data.selectedNumber].nodeList[0]!.canvasAfterPos, 16, Colors.black);
+          MyPainter.text(canvas, data.elemList[data.selectedNumber].nodeList[0]!.canvasAfterPos, 
+            MyPainter.doubleToString(data.resultList[data.selectedNumber], 3), 14, Colors.black, true, size.width);
         }
       }
       paint = Paint()
@@ -358,11 +234,11 @@ class GridPainter extends CustomPainter {
         count ++;
       }
     }
-    Painter().text(canvas, size.width, "体積：$count", const Offset(10, 10), 16, Colors.black);
+    MyPainter.text(canvas, const Offset(10, 10), "体積：$count", 16, Colors.black, false, size.width, );
   }
 
   @override
-  bool shouldRepaint(covariant GridPainter oldDelegate) {
+  bool shouldRepaint(covariant BridgePainter oldDelegate) {
     return false;
   }
 }

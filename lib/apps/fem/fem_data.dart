@@ -1,17 +1,17 @@
-import 'dart:math' as math;
+import 'dart:math';
 import 'dart:ui';
 import 'package:flutter/material.dart';
-import 'package:kozo/models/calculation_data.dart';
-import 'package:kozo/models/canvas_data.dart';
-import 'package:kozo/utils/calculator.dart';
+import 'package:kozo/apps/fem/lcst2ebe.dart';
+import 'package:kozo/utils/canvas_data.dart';
+import 'package:kozo/utils/my_calculator.dart';
 
-class Data
+class FemData
 {
-  Data({required this.onDebug});
+  FemData({required this.onDebug});
   final Function(String value) onDebug;
 
   // データ
-  int elemNode = 2; // 要素節点数
+  int elemNode = 3; // 要素節点数
   List<Node> nodeList = []; // 節点データ
   List<Elem> elemList = []; // 要素データ
   List<Mat> matList = []; // 要素パラメータデータ（まだ使ったいない）
@@ -68,10 +68,10 @@ class Data
 
     if(allNodeList().length > 1){
       for (int i = 1; i < nodes.length; i++) {
-        left = math.min(left, nodes[i].pos.dx);
-        right = math.max(right, nodes[i].pos.dx);
-        top = math.min(top, nodes[i].pos.dy);
-        bottom = math.max(bottom, nodes[i].pos.dy);
+        left = min(left, nodes[i].pos.dx);
+        right = max(right, nodes[i].pos.dx);
+        top = min(top, nodes[i].pos.dy);
+        bottom = max(bottom, nodes[i].pos.dy);
       }
     }
 
@@ -167,21 +167,100 @@ class Data
   }
 
   // 解析
-  void calculation(int type)
-  {
-    if(type == 0){
-      elemNode = 4;
-      calculationDes(nodeList, elemList, elemNode, powerType);
-      selectResult(0);
-    }else if(type == 1){
-      elemNode = 2;
-      calculationTruss(nodeList, elemList, elemNode);
-      selectResult(0);
-    }else if(type == 2){
-      elemNode = 2;
-      var result = calculationBeam(nodeList, elemList, elemNode);
-      resultNodeList = result.$1;
-      resultElemList = result.$2;
+  void calculation(){
+    // 要素の節点を反時計回りに
+    for(int i = 0; i < elemList.length; i++){
+      Offset pos1 = elemList[i].nodeList[0]!.pos;
+      Offset pos2 = elemList[i].nodeList[1]!.pos;
+      Offset pos3 = elemList[i].nodeList[2]!.pos;
+      if(pos1.dx * (pos2.dy - pos3.dy) + pos2.dx * (pos3.dy - pos1.dy) + pos3.dx * (pos1.dy - pos2.dy) == 0){
+        onDebug("要素の大きさが0");
+        return;
+      }
+      if(pos1.dx * (pos2.dy - pos3.dy) + pos2.dx * (pos3.dy - pos1.dy) + pos3.dx * (pos1.dy - pos2.dy) < 0){
+        Node n = elemList[i].nodeList[0]!;
+        elemList[i].nodeList[0] = elemList[i].nodeList[2];
+        elemList[i].nodeList[2] = n;
+      }
+    }
+
+    Lcst2ebe lcst2ebe = Lcst2ebe(
+      onDebug:(value) {
+        onDebug(value);
+      },
+    );
+
+    // 初期化
+    lcst2ebe.nd = 2;
+    lcst2ebe.node = 3;
+    lcst2ebe.nbcm = 3;
+    lcst2ebe.nsk = 6;
+
+    // 節点
+    lcst2ebe.nx = nodeList.length;
+    lcst2ebe.xyzn = List.generate(lcst2ebe.nx, (i) => List.filled(3, 0.0));
+    for (int i = 0; i < lcst2ebe.nx; i++) {
+      lcst2ebe.xyzn[i][0] = nodeList[i].pos.dx;
+      lcst2ebe.xyzn[i][1] = nodeList[i].pos.dy;
+    }
+
+    // 要素
+    lcst2ebe.nelx = elemList.length;
+    lcst2ebe.node = 3;
+    lcst2ebe.ijke = List.generate(lcst2ebe.nelx, (i) => List.filled(lcst2ebe.node + 2, 0));
+    for (int i = 0; i < lcst2ebe.nelx; i++) {
+      for (int j = 0; j < lcst2ebe.node; j++) {
+        lcst2ebe.ijke[i][j] = elemList[i].nodeList[j]!.number;
+      }
+    }
+
+    // マテリアル
+    lcst2ebe.nmat = 1;
+    lcst2ebe.pmat = List.generate(lcst2ebe.nmat, (i) => List.filled(20, 0.0));
+    for (int i = 0; i < lcst2ebe.nmat; i++) {
+      lcst2ebe.pmat[i][0] = elemList[0].e;
+      lcst2ebe.pmat[i][1] = elemList[0].v;
+    }
+
+    // 拘束
+    lcst2ebe.mspc = List.empty(growable: true);
+    lcst2ebe.vspc = List.empty(growable: true);
+    lcst2ebe.nspc = 0;
+    for(int i = 0; i < nodeList.length; i++){
+      if(nodeList[i].constXY[0] || nodeList[i].constXY[1] || nodeList[i].loadXY[0] != 0 || nodeList[i].loadXY[1] != 0){
+        lcst2ebe.mspc.add(List.filled(7, 0));
+        lcst2ebe.vspc.add(List.filled(6, 0.0));
+        lcst2ebe.mspc[lcst2ebe.nspc][0] = i;
+        if(nodeList[i].constXY[0] || nodeList[i].loadXY[0] != 0){
+          lcst2ebe.mspc[lcst2ebe.nspc][1] = 1;
+          lcst2ebe.vspc[lcst2ebe.nspc][0] = nodeList[i].loadXY[0];
+        }
+        if(nodeList[i].constXY[1] || nodeList[i].loadXY[1] != 0){
+          lcst2ebe.mspc[lcst2ebe.nspc][2] = 1;
+          lcst2ebe.vspc[lcst2ebe.nspc][1] = nodeList[i].loadXY[1];
+        }
+        lcst2ebe.nspc += 1;
+      }
+    }
+
+    lcst2ebe.neq = lcst2ebe.nd * lcst2ebe.nx;
+
+    // 解析実行
+    final result = lcst2ebe.run();
+
+    // 結果入手
+    for (int i = 0; i < lcst2ebe.nx; i++) {
+      nodeList[i].becPos = Offset(result.$1[lcst2ebe.nd*i], result.$1[lcst2ebe.nd*i+1]);
+      nodeList[i].afterPos = nodeList[i].pos + nodeList[i].becPos;
+    }
+
+    for (int i = 0; i < lcst2ebe.nelx; i++) {
+      elemList[i].strainXY[0] = result.$2[0][i];
+      elemList[i].strainXY[1] = result.$2[1][i];
+      elemList[i].strainXY[2] = result.$2[2][i];
+      elemList[i].stlessXY[0] = result.$3[0][i];
+      elemList[i].stlessXY[1] = result.$3[1][i];
+      elemList[i].stlessXY[2] = result.$3[2][i];
     }
 
     isCalculation = true;
@@ -209,14 +288,10 @@ class Data
       } else if(num == 2) {
         resultList[i] = elemList[i].stlessXY[2];
       } else if(num == 3) {
-        resultList[i] = elemList[i].stlessXY[3];
-      } else if(num == 4) {
-        resultList[i] = elemList[i].stlessXY[4];
-      } else if(num == 5) {
         resultList[i] = elemList[i].strainXY[0];
-      } else if(num == 6) {
+      } else if(num == 4) {
         resultList[i] = elemList[i].strainXY[1];
-      } else if(num == 7) {
+      } else if(num == 5) {
         resultList[i] = elemList[i].strainXY[2];
       } else {
         resultList = List.empty();
@@ -228,8 +303,8 @@ class Data
         resultMax = resultList[i];
         resultMin = resultList[i];
       }else{
-        resultMax = math.max(resultMax, resultList[i]);
-        resultMin = math.min(resultMin, resultList[i]);
+        resultMax = max(resultMax, resultList[i]);
+        resultMin = min(resultMin, resultList[i]);
       }
     }
   }
@@ -240,14 +315,14 @@ class Data
     canvasData.setScale(canvasRect, rect());
 
     List<Node> nodes = allNodeList();
-    double max = 0;
+    double maxx = 0;
     for(int i = 0; i < nodes.length; i++){
-      max = math.max(max, nodes[i].becPos.dx.abs());
-      max = math.max(max, nodes[i].becPos.dy.abs());
+      maxx = max(maxx, nodes[i].becPos.dx.abs());
+      maxx = max(maxx, nodes[i].becPos.dy.abs());
     }
     for(int i = 0; i < nodes.length; i++){
       nodes[i].canvasPos = canvasData.dToC(nodes[i].pos);
-      nodes[i].canvasAfterPos = nodes[i].canvasPos + Offset(nodes[i].becPos.dx, -nodes[i].becPos.dy)/max*canvasData.percentToCWidth(20);
+      nodes[i].canvasAfterPos = nodes[i].canvasPos + Offset(nodes[i].becPos.dx, -nodes[i].becPos.dy)/maxx*canvasData.percentToCWidth(20);
     }
     List<Elem> elems = allElemList();
     for(int i = 0; i < elems.length; i++){
@@ -257,7 +332,7 @@ class Data
         }
       }else if(type == 1){ // トラス、はり
         if(elems[i].nodeList[0] != null && elems[i].nodeList[1] != null){
-          var p = angleRectanglePos(elems[i].nodeList[0]!.canvasPos, elems[i].nodeList[1]!.canvasPos, canvasData.percentToCWidth(5));
+          var p = MyCalculator.angleRectanglePos(elems[i].nodeList[0]!.canvasPos, elems[i].nodeList[1]!.canvasPos, canvasData.percentToCWidth(5));
           elems[i].canvasPosList[0] = p.$1;
           elems[i].canvasPosList[1] = p.$2;
           elems[i].canvasPosList[2] = p.$3;
@@ -283,42 +358,16 @@ class Data
     for(int i = 0; i < elemList.length; i++){
       List<Offset> nodePosList = List.empty(growable: true);
       for(int j = 0; j < elemNode; j++){
-        nodePosList.add(elemList[i].nodeList[j]!.pos);
+        nodePosList.add(elemList[i].nodeList[j]!.canvasPos);
       }
 
-      // if(elemNode == 2){
-      //   double distance = distanceFromPointToSegment(nodePosList[0], nodePosList[1], pos);
+      if(elemNode == 3){
+        double totalArea = MyCalculator.areaOfTriangle(nodePosList[0], nodePosList[1], nodePosList[2]);
+        double area1 = MyCalculator.areaOfTriangle(pos, nodePosList[1], nodePosList[2]);
+        double area2 = MyCalculator.areaOfTriangle(nodePosList[0], pos, nodePosList[2]);
+        double area3 = MyCalculator.areaOfTriangle(nodePosList[0], nodePosList[1], pos);
 
-      //   if(distance < 0.1){
-      //     selectedNumber = i;
-      //     elemList[i].isSelect = true;
-      //     return;
-      //   }
-      // }
-      // else if(elemNode == 3){
-      //   double totalArea = areaOfTriangle(nodePosList[0], nodePosList[1], nodePosList[2]);
-      //   double area1 = areaOfTriangle(pos, nodePosList[1], nodePosList[2]);
-      //   double area2 = areaOfTriangle(nodePosList[0], pos, nodePosList[2]);
-      //   double area3 = areaOfTriangle(nodePosList[0], nodePosList[1], pos);
-
-      //   if (math.pow(totalArea, 1.0001) >= area1 + area2 + area3){
-      //     selectedNumber = i;
-      //     return;
-      //   }
-      // }
-      if(type == 0){ // 四角形のとき
-        Offset p0 = elemList[i].canvasPosList[0];
-        Offset p1 = elemList[i].canvasPosList[1];
-        Offset p2 = elemList[i].canvasPosList[2];
-        Offset p3 = elemList[i].canvasPosList[3];
-        if(isCalculation){
-          p0 = elemList[i].nodeList[0]!.canvasAfterPos;
-          p1 = elemList[i].nodeList[1]!.canvasAfterPos;
-          p2 = elemList[i].nodeList[2]!.canvasAfterPos;
-          p3 = elemList[i].nodeList[3]!.canvasAfterPos;
-        }
-
-        if(isPointInRectangle(pos, p0, p1, p2, p3)){
+        if (pow(totalArea, 1.0001) >= area1 + area2 + area3){
           selectedNumber = i;
           elemList[i].isSelect = true;
           return;
@@ -346,8 +395,8 @@ class Node
   // 基本データ
   int number = 0;
   Offset pos = Offset.zero;
-  List<bool> constXYR = [false, false, false, false]; // 拘束（0:x、1:y、2:回転、3:ヒンジ）
-  List<double> loadXY = [0, 0, 0]; // 荷重（0:x、1:y、2:モーメント）
+  List<bool> constXY = [false, false]; // 拘束（0:x、1:y）
+  List<double> loadXY = [0, 0]; // 荷重（0:x、1:y）
 
   // 計算結果
   Offset becPos = Offset.zero;
@@ -364,15 +413,15 @@ class Elem
 {
   // 基本データ
   int number = 0;
-  double e = 0.0;
-  double v = 0.0;
+  double e = 1.0;
+  double v = 1.0;
   List<Node?> nodeList = [null, null, null, null];
   Mat? mat;
   double load = 0.0; // 分布荷重
 
   // 計算結果
   List<double> strainXY = [0,0,0]; // 0:X方向ひずみ、1:Y方向ひずみ、2:せん断ひずみ
-  List<double> stlessXY = [0,0,0,0,0,0,0]; // 0:X方向応力、1:Y方向応力、2:せん断応力、3:最大主応力、4:最小主応力、5:曲げモーメント左、6:曲げモーメント右
+  List<double> stlessXY = [0,0,0]; // 0:X方向応力、1:Y方向応力、2:せん断応力
   List<double> result = [0,0,0,0,0,0,0,0,0]; // 0:たわみ1、1:たわみ角1、2:たわみ2、3:たわみ角2、4:せん断力、5:曲げモーメント1、6:曲げモーメント2
 
   // キャンバス情報
