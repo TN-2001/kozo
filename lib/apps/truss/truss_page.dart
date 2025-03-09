@@ -114,15 +114,16 @@ class _TrussPageState extends State<TrussPage> {
               icon: Icons.play_arrow,
               message: "計算",
               onPressed: (){
-                data.calculation();
-                if(devTypeNum == 0){
-                  data.selectResult(devTypeNum);
-                }else{
-                  data.selectResult(5);
-                }
-                setState(() {
-                  data.isCalculation = true;
-                });
+                // data.calculation();
+                // if(devTypeNum == 0){
+                //   data.selectResult(devTypeNum);
+                // }else{
+                //   data.selectResult(5);
+                // }
+                // setState(() {
+                //   data.isCalculation = true;
+                // });
+                onCalculation();
               },
             ),
           }else...{
@@ -463,6 +464,61 @@ class _TrussPageState extends State<TrussPage> {
         width
       );
     }
+  }
+
+  // 計算ボタン
+  void onCalculation(){
+    bool isPower = false;
+
+    int xyConstCount = 0;
+    int xConstCount = 0;
+    int yConstCount = 0;
+
+    for(int i = 0; i < data.nodeList.length; i++){
+      if(data.nodeList[i].constXY[0] && data.nodeList[i].constXY[1]){
+        xyConstCount ++;
+      }else if(data.nodeList[i].constXY[0]){
+        xConstCount ++;
+      }else if(data.nodeList[i].constXY[1]){
+        yConstCount ++;
+      }
+
+      if((!data.nodeList[i].constXY[0] && data.nodeList[i].loadXY[0] != 0)
+        || (!data.nodeList[i].constXY[1] && data.nodeList[i].loadXY[1] != 0)){
+          isPower = true;
+      }
+    }
+
+    if(data.elemList.length < 3){
+      snacbar("節点と要素はそれぞれ3つ以上必要");
+    }else if(!(xyConstCount > 0 && (xConstCount > 0 || yConstCount > 0))){
+      snacbar("拘束条件が不足");
+    }else if(!isPower){
+      snacbar("荷重条件が不足");
+    }else{
+      setState(() {
+        data.calculation();
+        if(devTypeNum == 0){
+          data.selectResult(devTypeNum);
+        }else{
+          data.selectResult(5);
+        }
+        data.isCalculation = true;
+      });
+    }
+  }
+
+  // メッセージ
+  void snacbar(String text){
+    final snackBar = SnackBar(
+      content: Text(text),
+      action: SnackBarAction(
+        label: '閉じる', 
+        onPressed: () {  },
+      ),
+    );
+
+    ScaffoldMessenger.of(context).showSnackBar(snackBar);
   }
 }
 

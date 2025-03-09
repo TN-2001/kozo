@@ -511,10 +511,11 @@ class MyCustomPaint extends StatelessWidget {
             final double maxWidth = constraints.maxWidth;
             final double maxHeight = constraints.maxHeight;
 
-            // CustomPaintのサイズを設定
-            return CustomPaint(
-              size: Size(maxWidth, maxHeight), // ここで動的にサイズを指定
-              painter: painter,
+            return ClipRect( // 指定範囲外の描画を防ぐ
+              child: CustomPaint(
+                size: Size(maxWidth, maxHeight), // ここで動的にサイズを指定
+                painter: painter,
+              ),
             );
           },
         ),

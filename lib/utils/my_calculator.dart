@@ -188,5 +188,11 @@ class MyCalculator{
 
     return(topLeft, topRight, bottomRight, bottomLeft);
   }
+
+  // 配列を正規化
+  static List<double> normalizeArray(List<double> array) {
+    double maxVal = max(array.reduce(max).abs(), array.reduce(min).abs());
+    return array.map((number) => number/maxVal).toList();
+  }
 }
 

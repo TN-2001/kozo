@@ -55,7 +55,6 @@ class _BeamPageState extends State<BeamPage> {
             message: "メニュー", 
             onPressed: (){
               _scaffoldKey.currentState!.openDrawer();
-              // Navigator.pushNamed(context, '/');
             },
           ),
           if(!data.isCalculation)...{
@@ -107,7 +106,6 @@ class _BeamPageState extends State<BeamPage> {
                 }
               ),
             },
-
           },
         ],
 
@@ -118,9 +116,7 @@ class _BeamPageState extends State<BeamPage> {
               icon: Icons.play_arrow,
               message: "計算",
               onPressed: (){
-                setState(() {
-                  data.calculation();
-                });
+                onCalculation();
               },
             ),
           }else...{
@@ -493,6 +489,61 @@ class _BeamPageState extends State<BeamPage> {
         width
       );
     }
+  }
+
+  // 計算ボタン
+  void onCalculation(){
+    bool isPower = false;
+
+    int xyrConstCount = 0;
+    int xyConstCount = 0;
+    int yConstCount = 0;
+
+    for(int i = 0; i < data.nodeList.length; i++){
+      if(data.nodeList[i].constXYR[0] && data.nodeList[i].constXYR[1] && data.nodeList[i].constXYR[2]){
+        xyrConstCount ++;
+      }else if(data.nodeList[i].constXYR[0] && data.nodeList[i].constXYR[1]){
+        xyConstCount ++;
+      }else if(data.nodeList[i].constXYR[1]){
+        yConstCount ++;
+      }
+
+      if((!data.nodeList[i].constXYR[1] && data.nodeList[i].loadXY[1] != 0)
+        || (!data.nodeList[i].constXYR[2] && data.nodeList[i].loadXY[2] != 0)){
+          isPower = true;
+      }
+    }
+
+    for(int i = 0; i < data.elemList.length; i++){
+      if(data.elemList[i].load != 0){
+        isPower = true;
+      }
+    }
+
+    if(data.elemList.isEmpty){
+      snacbar("節点は2つ以上、要素は1つ以上必要");
+    }else if(!(xyrConstCount > 0) && !(xyConstCount > 0 && yConstCount > 0)){
+      snacbar("拘束条件が不足");
+    }else if(!isPower){
+      snacbar("荷重条件が不足");
+    }else{
+      setState(() {
+        data.calculation();
+      });
+    }
+  }
+
+  // メッセージ
+  void snacbar(String text){
+    final snackBar = SnackBar(
+      content: Text(text),
+      action: SnackBarAction(
+        label: '閉じる', 
+        onPressed: () {  },
+      ),
+    );
+
+    ScaffoldMessenger.of(context).showSnackBar(snackBar);
   }
 }
 

@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:kozo/apps/bridge/bridge_data.dart';
+import 'package:kozo/apps/bridgegame/bridgegame_data.dart';
 import 'package:kozo/components/my_painter.dart';
 
-class BridgePainter extends CustomPainter {
-  const BridgePainter({required this.data});
+class BridgegamePainter extends CustomPainter {
+  const BridgegamePainter({required this.data});
 
-  final BridgeData data;
+  final BridgegameData data;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -14,8 +14,8 @@ class BridgePainter extends CustomPainter {
 
     Paint paint = Paint();
 
-    // 絵
     Rect canvasRect = data.canvasData.dToCRect(dataRect);
+    // 絵
     _drawBackground(canvasRect, canvas);
 
     if(!data.isCalculation || data.resultList.isEmpty){
@@ -45,11 +45,19 @@ class BridgePainter extends CustomPainter {
         Offset pos2 = data.nodeList[68].canvasPos;
         canvas.drawLine(Offset(pos1.dx, pos1.dy+data.canvasData.scale*1.5), Offset(pos2.dx, pos2.dy+data.canvasData.scale*1.5), paint);
       }
+
+      // 体積
+      int elemLength = data.elemCount();
+      Color color = Colors.black;
+      if(elemLength > 1000){
+        color = Colors.red;
+      }
+      MyPainter.text(canvas, const Offset(10, 10), "体積：$elemLength", 16, color, true, size.width, );
     }
     else{
       _drawElem(true, canvas); // 要素
       _drawElemEdge(true, canvas); // 要素の辺
-
+    
       // 選択
       paint = Paint()
         ..color = Colors.red
@@ -88,10 +96,13 @@ class BridgePainter extends CustomPainter {
         MyPainter.rainbowBand(canvas, cRect, 50);
 
         // 最大最小
-        MyPainter.text(canvas, Offset(cRect.right+5, cRect.top-10), 
-          MyPainter.doubleToString(data.resultMax, 3), 14, Colors.black, true, size.width);
-        MyPainter.text(canvas, Offset(cRect.right+5, cRect.bottom-10), 
-          MyPainter.doubleToString(data.resultMin, 3), 14, Colors.black, true, size.width);
+        MyPainter.text(canvas, Offset(cRect.left+5, cRect.top-20), 
+          "大", 14, Colors.black, true, size.width);
+        MyPainter.text(canvas, Offset(cRect.left+5, cRect.bottom+5), 
+          "小", 14, Colors.black, true, size.width);
+        
+        // ラベル
+        MyPainter.text(canvas, Offset(cRect.right+5, cRect.center.dy-40), "引張の力", 14, Colors.black, true, 14);
       }else{
         Rect cRect = Rect.fromLTRB(50, size.height - 75, size.width - 50, size.height - 50);
         if(cRect.width > 500){
@@ -101,24 +112,24 @@ class BridgePainter extends CustomPainter {
         MyPainter.rainbowBand(canvas, cRect, 50);
 
         // 最大最小
-        MyPainter.text(canvas, Offset(cRect.right-20, cRect.bottom), 
-          MyPainter.doubleToString(data.resultMax, 3), 14, Colors.black, true, size.width);
-        MyPainter.text(canvas, Offset(cRect.left-20, cRect.bottom), 
-          MyPainter.doubleToString(data.resultMin, 3), 14, Colors.black, true, size.width);
+        MyPainter.text(canvas, Offset(cRect.right+5, cRect.top+3), 
+          "大", 14, Colors.black, true, size.width);
+        MyPainter.text(canvas, Offset(cRect.left-20, cRect.top+3), 
+          "小", 14, Colors.black, true, size.width);
+        
+        // ラベル
+        MyPainter.text(canvas, Offset(cRect.center.dx-20, cRect.bottom+5), "引張の力", 14, Colors.black, true, size.width);
       }
-    }
 
-    // 最大最小
-    int count = 0;
-    for(int i = 0; i < data.elemList.length; i++){
-      if(data.elemList[i].e > 0){
-        count ++;
-      }
+      // 点数
+      MyPainter.text(canvas, const Offset(10, 10), "${data.resultPoint.toStringAsFixed(2)}点", 32, Colors.black, true, size.width, );
+
+      // 体積
+      MyPainter.text(canvas, const Offset(10, 50), "体積：${data.elemCount()}", 16, Colors.black, true, size.width, );
     }
-    MyPainter.text(canvas, const Offset(10, 10), "体積：$count", 16, Colors.black, true, size.width, );
   }
 
-    // 背景
+  // 背景
   void _drawBackground(Rect rect, Canvas canvas){
     Paint paint = Paint();
 
@@ -230,7 +241,7 @@ class BridgePainter extends CustomPainter {
 
 
   @override
-  bool shouldRepaint(covariant BridgePainter oldDelegate) {
+  bool shouldRepaint(covariant BridgegamePainter oldDelegate) {
     return false;
   }
 }

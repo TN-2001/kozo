@@ -1,12 +1,12 @@
 import 'dart:math';
 import 'dart:ui';
 import 'package:flutter/material.dart';
-import 'package:kozo/apps/bridge/des_fem70x25.dart';
+import 'package:kozo/apps/bridgegame/des_fem70x25.dart';
 import 'package:kozo/utils/canvas_data.dart';
 import 'package:kozo/utils/my_calculator.dart';
 
-class BridgeData{
-  BridgeData({required this.onDebug}){
+class BridgegameData{
+  BridgegameData({required this.onDebug}){
     elemNode = 4;
     int countX = 70;
     int countY = 25;
@@ -23,6 +23,12 @@ class BridgeData{
         elem.nodeList = [nodeList[i*(countX+1)+j],nodeList[i*(countX+1)+j+1],nodeList[(i+1)*(countX+1)+j+1],nodeList[(i+1)*(countX+1)+j]];
         elemList.add(elem);
       }
+    }
+
+    // 拘束か荷重がかかる要素は確定
+    for(int i = 0; i < countX; i++){
+      elemList[i].isCanPaint = false;
+      elemList[i].e = 1;
     }
   }
 
@@ -53,7 +59,7 @@ class BridgeData{
     double top = nodes[0].pos.dy;
     double bottom = nodes[0].pos.dy;
 
-    if(nodeList.length > 1){
+    if(nodes.length > 1){
       for (int i = 1; i < nodes.length; i++) {
         left = min(left, nodes[i].pos.dx);
         right = max(right, nodes[i].pos.dx);
@@ -65,6 +71,19 @@ class BridgeData{
     return Rect.fromLTRB(left, top, right, bottom);
   }
   CanvasData canvasData = CanvasData();
+
+
+  int elemCount(){ // 要素数
+    int elemCount = 0;
+    for(int i = 0; i < elemList.length; i++){
+      if(elemList[i].e > 0){
+        elemCount ++;
+      }
+    }
+    return elemCount;
+  }
+  double vvar = 0; // 荷重中央たわみ/体積（基準モデル）
+  double resultPoint = 0; // 点数
 
   // 追加削除
   void addNode(){
@@ -154,7 +173,9 @@ class BridgeData{
 
     for(int y = 0; y < countY; y++){
       for(int x = 0; x < countX/2; x++){
-        elemList[countX*y+countX-x-1].e = elemList[countX*y+x].e;
+        if(elemList[countX*y+countX-x-1].isCanPaint){
+          elemList[countX*y+countX-x-1].e = elemList[countX*y+x].e;
+        }
       }
     }
   }
@@ -181,17 +202,6 @@ class BridgeData{
         nodeList[(npx1+1)*(npx2-n2)+n1].becPos = Offset(result.$1[((npx1+1)*n2+n1)*nd], result.$1[((npx1+1)*n2+n1)*nd+1]);
       }
     }
-    // 変位を最大3に変更
-    double maxDirY = 0;
-    for(int i = 0; i < nodeList.length; i++){
-      maxDirY = max(maxDirY, nodeList[i].becPos.dy.abs());
-    }
-    double size = 3 / maxDirY;
-    for (int n2 = 0; n2 < npx2+1; n2++) {
-      for (int n1 = 0; n1 < npx1+1; n1++) {
-        nodeList[(npx1+1)*(npx2-n2)+n1].becPos *= size;
-      }
-    }
     // 変位後の座標
     for(int i = 0; i < nodeList.length; i++){
       nodeList[i].afterPos = Offset(nodeList[i].pos.dx+nodeList[i].becPos.dx, nodeList[i].pos.dy+nodeList[i].becPos.dy);
@@ -211,7 +221,66 @@ class BridgeData{
       }
     }
 
-    selectResult(0);
+    // 点数
+    double maxBecPos = nodeList[35].becPos.dy.abs();
+    int elemLength = elemCount();
+
+    // シグモイド関数
+    // vvar = 125446.5437*pow(elemLength,-3.4227461);
+
+    // ニュートン補間
+    double b0, b1, b2;
+    if (elemLength >= 70 && elemLength < 140) {
+      b0 = 3.4159242117E+00;
+      b1 = -4.5191687192E-02;
+      b2 = 2.1786797104E-04;
+      vvar = b0 + b1 * (elemLength - 70) + b2 * (elemLength - 70) * (elemLength - 105);
+    } else if (elemLength >= 140 && elemLength < 210) {
+      b0 = 7.8628263731E-01;
+      b1 = -8.3156504589E-03;
+      b2 = 3.5738917299E-05;
+      vvar = b0 + b1 * (elemLength - 140) + b2 * (elemLength - 140) * (elemLength - 175);
+    } else if (elemLength >= 210 && elemLength < 350) {
+      b0 = 2.9174745257E-01;
+      b1 = -2.0613303788E-03;
+      b2 = 8.5850173811E-06;
+      vvar = b0 + b1 * (elemLength - 210) + b2 * (elemLength - 210) * (elemLength - 280);
+    } else if (elemLength >= 350 && elemLength < 490) {
+      b0 = 8.7294369877E-02;
+      b1 = -4.4232646612E-04;
+      b2 = 1.3426382928E-06;
+      vvar = b0 + b1 * (elemLength - 350) + b2 * (elemLength - 350) * (elemLength - 420);
+    } else if (elemLength >= 490 && elemLength < 630) {
+      b0 = 3.8526519889E-02;
+      b1 = -1.5628977445E-04;
+      b2 = 3.9630188412E-07;
+      vvar = b0 + b1 * (elemLength - 490) + b2 * (elemLength - 490) * (elemLength - 560);
+    } else if (elemLength >= 630 && elemLength < 770) {
+      b0 = 2.0529709931E-02;
+      b1 = -6.7666021124E-05;
+      b2 = 1.4764385486E-07;
+      vvar = b0 + b1 * (elemLength - 630) + b2 * (elemLength - 630) * (elemLength - 700);
+    } else if (elemLength >= 770 && elemLength < 910) {
+      b0 = 1.2503376751E-02;
+      b1 = -3.3617200755E-05;
+      b2 = 6.3902626225E-08;
+      vvar = b0 + b1 * (elemLength - 770) + b2 * (elemLength - 770) * (elemLength - 840);
+    } else if (elemLength >= 910 && elemLength < 1050) {
+      b0 = 8.4232143822E-03;
+      b1 = -1.8513034220E-05;
+      b2 = 3.1060716901E-08;
+      vvar = b0 + b1 * (elemLength - 910) + b2 * (elemLength - 910) * (elemLength - 980);
+    }
+    vvar = vvar/elemLength;
+
+    double vvvar = maxBecPos/elemLength-vvar;
+    double a = 3;
+    if(vvvar > 0){
+      a = 0.5;
+    }
+    resultPoint = 100 * (1-1/(1+(pow(e, -a*(vvvar)/vvar))));
+
+    selectResult(3);
 
     isCalculation = true;
   }
@@ -257,19 +326,19 @@ class BridgeData{
     resultMin = resultList.reduce(min);
   }
 
-  // キャンバスに要素があるか
+  // キャンバス
   void updateCanvasPos(Rect canvasRect, int type){
     canvasData.setScale(canvasRect, rect());
 
+    double a = 3;
+    // if(resultPoint < 50){
+    //   a = a * 2*(1/(1+pow(e, -0.025*(resultPoint-50))));
+    // }
+
     List<Node> nodes = nodeList;
-    double maxx = 0;
-    for(int i = 0; i < nodes.length; i++){
-      maxx = max(maxx, nodes[i].becPos.dx.abs());
-      maxx = max(maxx, nodes[i].becPos.dy.abs());
-    }
     for(int i = 0; i < nodes.length; i++){
       nodes[i].canvasPos = canvasData.dToC(nodes[i].pos);
-      nodes[i].canvasAfterPos = nodes[i].canvasPos + Offset(nodes[i].becPos.dx, -nodes[i].becPos.dy)/maxx*canvasData.scale*5;
+      nodes[i].canvasAfterPos = nodes[i].canvasPos + Offset(nodes[i].becPos.dx, -nodes[i].becPos.dy)*canvasData.scale*a/(vvar*elemCount()); // 変形
     }
     List<Elem> elems = elemList;
     for(int i = 0; i < elems.length; i++){
@@ -367,4 +436,5 @@ class Elem
   // キャンバス情報
   List<Offset> canvasPosList = [Offset.zero, Offset.zero, Offset.zero, Offset.zero];
   bool isSelect = false; // 選択されているか
+  bool isCanPaint = true; // 色がかわるか
 }
