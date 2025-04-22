@@ -1,6 +1,6 @@
 # kozo
 
-![](image\apps.jpg)
+![](image/apps.jpg)
 
 ## 説明
 構造力学に関する教育用アプリケーション
